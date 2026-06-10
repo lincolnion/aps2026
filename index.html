@@ -258,10 +258,19 @@
   .td-time { font-variant-numeric: tabular-nums; color: var(--slate); }
   .td-name { font-weight: 600; }
   .terminal-badge {
-    background: var(--navy); color: var(--gold-light);
+    background: var(--navy); color: var(--gold-light) !important;
+    font-size: 0.72rem; font-weight: 700;
+    padding: 3px 9px; border-radius: 5px;
+    letter-spacing: 0.08em;
+    display: inline-block;
+  }
+  .terminal-pending {
+    background: #fff3e0; color: #e65100 !important;
     font-size: 0.68rem; font-weight: 700;
-    padding: 2px 7px; border-radius: 4px;
+    padding: 3px 8px; border-radius: 5px;
     letter-spacing: 0.06em;
+    border: 1px dashed #e65100;
+    display: inline-block;
   }
 
   /* ── MEALS TABLE ── */
@@ -529,7 +538,8 @@
               </div>
               <div class="form-group">
                 <label>Additional Guest(s)</label>
-                <input type="text" id="f_additional" placeholder="e.g. family members" oninput="renderFormCheckboxes()">
+                <div id="additionalGuestsList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px;"></div>
+                <button type="button" class="btn btn-outline btn-sm" onclick="addAdditionalGuestRow()" style="align-self:flex-start;">+ Add Guest</button>
               </div>
               <div class="form-group">
                 <label>Country</label>
@@ -630,11 +640,23 @@
 
       <!-- ACCOMMODATION -->
       <div class="card">
-        <div class="card-title">🏨 Accommodation</div>
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>🏨 Accommodation</span>
+          <button type="button" class="btn btn-outline btn-sm" onclick="openHotelModal()">+ Add Hotel</button>
+        </div>
+
+        <!-- 1st Stay -->
+        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--green);margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--border);">1st Hotel Stay</div>
         <div class="form-grid">
           <div class="form-group">
             <label>Hotel / Accommodation</label>
-            <input type="text" id="f_hotel" placeholder="e.g. PPH / HYATT">
+            <select id="f_hotel_id" onchange="syncHotelName('','')">
+              <option value="">— Select Hotel —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Hotel Name (override / manual)</label>
+            <input type="text" id="f_hotel" placeholder="Auto-filled or type manually">
           </div>
           <div class="form-group">
             <label>Room Number</label>
@@ -647,6 +669,47 @@
           <div class="form-group">
             <label>Check-out Date</label>
             <input type="date" id="f_checkout">
+          </div>
+        </div>
+
+        <!-- 2nd Stay toggle -->
+        <div style="margin-top:14px;">
+          <button type="button" class="btn btn-outline btn-sm" id="btn_add_stay2"
+            onclick="toggleStay2(true)" style="color:var(--gold);border-color:var(--gold);">
+            ➕ Add 2nd Hotel Stay
+          </button>
+          <button type="button" class="btn btn-danger btn-sm" id="btn_remove_stay2"
+            onclick="toggleStay2(false)" style="display:none;">
+            ✕ Remove 2nd Stay
+          </button>
+        </div>
+
+        <!-- 2nd Stay fields (hidden by default) -->
+        <div id="stay2_block" style="display:none;margin-top:16px;">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--blue);margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--border);">2nd Hotel Stay</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Hotel / Accommodation</label>
+              <select id="f_hotel2_id" onchange="syncHotelName('2','2')">
+                <option value="">— Select Hotel —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Hotel Name (override / manual)</label>
+              <input type="text" id="f_hotel2" placeholder="Auto-filled or type manually">
+            </div>
+            <div class="form-group">
+              <label>Room Number</label>
+              <input type="text" id="f_room2" placeholder="e.g. 512">
+            </div>
+            <div class="form-group">
+              <label>Check-in Date</label>
+              <input type="date" id="f_checkin2">
+            </div>
+            <div class="form-group">
+              <label>Check-out Date</label>
+              <input type="date" id="f_checkout2">
+            </div>
           </div>
         </div>
       </div>
@@ -923,11 +986,17 @@
 
     <!-- Attendance Matrix -->
     <div class="card" style="margin-top:16px;">
-      <div class="card-title">Meal Attendance Matrix</div>
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Meal Attendance Matrix</span>
+        <span style="font-size:0.75rem;color:var(--slate-light);font-weight:400;">Click any cell to toggle attendance</span>
+      </div>
+      <!-- Totals summary strip -->
+      <div id="mealTotalsStrip" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>
       <div class="table-wrapper">
         <table class="meals-table" id="mealsMatrix">
           <thead><tr id="mealsMatrixHeader"></tr></thead>
           <tbody id="mealsMatrixBody"></tbody>
+          <tfoot><tr id="mealsMatrixFooter" style="background:var(--navy);color:white;"></tr></tfoot>
         </table>
       </div>
     </div>
@@ -949,11 +1018,17 @@
 
     <!-- Activity Sign-up Matrix -->
     <div class="card">
-      <div class="card-title">Sign-up Matrix</div>
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Sign-up Matrix</span>
+        <span style="font-size:0.75rem;color:var(--slate-light);font-weight:400;">Click any cell to toggle</span>
+      </div>
+      <!-- Totals summary strip -->
+      <div id="actTotalsStrip" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>
       <div class="table-wrapper">
         <table id="activityMatrix">
           <thead><tr id="activityMatrixHeader"></tr></thead>
           <tbody id="activityMatrixBody"></tbody>
+          <tfoot><tr id="activityMatrixFooter" style="background:var(--navy);color:white;"></tr></tfoot>
         </table>
       </div>
     </div>
@@ -977,12 +1052,31 @@
   <!-- ──────────────── HOTEL ──────────────── -->
   <div class="view" id="view-hotel">
     <div class="section-title">Hotel & Accommodation</div>
-    <div class="section-desc">Check-in and check-out schedule for all guests.</div>
-    <div class="table-wrapper">
-      <table>
-        <thead><tr><th>#</th><th>Guest</th><th>Spouse</th><th>Hotel</th><th>Room</th><th>Arrival</th><th>Check-in</th><th>Departure</th><th>Check-out</th><th>Nights</th></tr></thead>
-        <tbody id="hotelBody"></tbody>
-      </table>
+    <div class="section-desc">Manage hotels and view guest check-in / check-out schedule.</div>
+
+    <!-- Hotel Register -->
+    <div class="card" style="margin-bottom:18px;">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>🏨 Hotel Register</span>
+        <button class="btn btn-gold btn-sm" onclick="openHotelModal()">+ Add Hotel</button>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>#</th><th>Short Name</th><th>Full Name</th><th>Address</th><th>Contact</th><th>Notes</th><th>Guests</th><th></th></tr></thead>
+          <tbody id="hotelRegisterBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Guest Accommodation Schedule -->
+    <div class="card">
+      <div class="card-title">Guest Accommodation Schedule</div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>#</th><th>Guest</th><th>Spouse</th><th>Additional</th><th>Hotel</th><th>Room</th><th>Arrival</th><th>Check-in</th><th>Departure</th><th>Check-out</th><th>Nights</th><th></th></tr></thead>
+          <tbody id="hotelBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -1150,6 +1244,45 @@
   </div>
 </div>
 
+<!-- ──────────────── HOTEL MODAL ──────────────── -->
+<div class="modal-overlay" id="hotelModal">
+  <div class="modal" style="max-width:540px;">
+    <div class="modal-header">
+      <div><div class="modal-title" id="hotelModalTitle">Add Hotel</div></div>
+      <button class="modal-close" onclick="closeModal('hotelModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid form-grid-2">
+        <div class="form-group">
+          <label>Short Name / Code *</label>
+          <input type="text" id="ht_name" placeholder="e.g. PPH">
+        </div>
+        <div class="form-group">
+          <label>Full Hotel Name</label>
+          <input type="text" id="ht_fullName" placeholder="e.g. Park Pacific Hotel">
+        </div>
+        <div class="form-group full-width">
+          <label>Address</label>
+          <input type="text" id="ht_address" placeholder="e.g. 10 Scotts Road, Singapore">
+        </div>
+        <div class="form-group">
+          <label>Contact Number</label>
+          <input type="text" id="ht_contact" placeholder="e.g. +65 6737 8888">
+        </div>
+        <div class="form-group full-width">
+          <label>Notes</label>
+          <textarea id="ht_notes" rows="2" placeholder="e.g. Main conference hotel, breakfast included"></textarea>
+        </div>
+      </div>
+      <input type="hidden" id="ht_editId">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveHotel()">Save Hotel</button>
+        <button class="btn btn-outline" onclick="closeModal('hotelModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ──────────────── CHAPERONE MODAL ──────────────── -->
 <div class="modal-overlay" id="chaperoneModal">
   <div class="modal" style="max-width:520px;">
@@ -1252,7 +1385,8 @@ let db = {
   activityOptions: [],
   events: [],
   chaperones: [],
-  drivers: []
+  drivers: [],
+  hotels: []
 };
 
 const DB_VERSION = 3;
@@ -1269,16 +1403,38 @@ function migrateDB() {
   const aLen = (db.activityOptions||[]).length;
   if (!db.chaperones) db.chaperones = [];
   if (!db.drivers)    db.drivers    = [];
+  if (!db.hotels)     db.hotels     = [];
   (db.guests||[]).forEach(g => {
     if (!g.mealSpouseAttendance)          g.mealSpouseAttendance          = Array(mLen).fill(false);
-    if (!g.mealAdditionalAttendance)      g.mealAdditionalAttendance      = Array(mLen).fill(false);
-    if (!g.activitySpouseAttendance)      g.activitySpouseAttendance      = Array(aLen).fill(false);
-    if (!g.activityAdditionalAttendance)  g.activityAdditionalAttendance  = Array(aLen).fill(false);
+    // mealAdditionalAttendance: now array-of-arrays [personIdx][mealIdx]
+    if (!g.mealAdditionalAttendance || !Array.isArray(g.mealAdditionalAttendance[0])) {
+      const addlCount = (g.additionalGuests||[]).filter(a=>a.name&&a.name.trim()).length || 1;
+      const oldFlat = Array.isArray(g.mealAdditionalAttendance) ? g.mealAdditionalAttendance : Array(mLen).fill(false);
+      g.mealAdditionalAttendance = Array.from({length: addlCount}, () => [...oldFlat]);
+    }
+    if (!g.activitySpouseAttendance) g.activitySpouseAttendance = Array(aLen).fill(false);
+    // activityAdditionalAttendance: array-of-arrays [personIdx][actIdx]
+    if (!g.activityAdditionalAttendance || !Array.isArray(g.activityAdditionalAttendance[0])) {
+      const addlCount = (g.additionalGuests||[]).filter(a=>a.name&&a.name.trim()).length || 1;
+      const oldFlat = Array.isArray(g.activityAdditionalAttendance) ? g.activityAdditionalAttendance : Array(aLen).fill(false);
+      g.activityAdditionalAttendance = Array.from({length: addlCount}, () => [...oldFlat]);
+    }
     if (!g.additional)       g.additional       = '';
+    // Migrate old string additional → additionalGuests array
+    if (!g.additionalGuests) {
+      g.additionalGuests = g.additional
+        ? g.additional.split(',').map(n => ({ name: n.trim(), relation: '' })).filter(x => x.name)
+        : [];
+    }
     if (!g.arr_chaperone_id) g.arr_chaperone_id = '';
     if (!g.arr_driver_id)    g.arr_driver_id    = '';
     if (!g.dep_chaperone_id) g.dep_chaperone_id = '';
     if (!g.dep_driver_id)    g.dep_driver_id    = '';
+    if (!g.hotel2)    g.hotel2    = '';
+    if (!g.hotel2_id) g.hotel2_id = '';
+    if (!g.room2)     g.room2     = '';
+    if (!g.checkin2)  g.checkin2  = '';
+    if (!g.checkout2) g.checkout2 = '';
   });
   (db.events||[]).forEach(ev => { if (!ev.respondent) ev.respondent = ''; });
 }
@@ -1469,15 +1625,27 @@ function seedData() {
   ];
   db.drivers = drvSeed.map((d,i) => ({ id: 200+i, ...d }));
 
+  // ── Hotels ──
+  const hotelSeed = [
+    { name:"PPH",         fullName:"Park Pacific Hotel",            address:"Novena, Singapore",           contact:"",           notes:"Main guest hotel" },
+    { name:"PPSS",        fullName:"Park Pacific Singapore Suites", address:"Novena, Singapore",           contact:"",           notes:"VIP suites" },
+    { name:"HYATT",       fullName:"Grand Hyatt Singapore",         address:"10 Scotts Rd, Singapore",     contact:"",           notes:"" },
+    { name:"Hilton",      fullName:"Hilton Singapore Orchard",      address:"333 Orchard Rd, Singapore",   contact:"",           notes:"Chatterbox restaurant on Level 5" },
+    { name:"Asia Grand",  fullName:"Asia Grand Restaurant",         address:"Singapore",                   contact:"",           notes:"Dinner venue" },
+    { name:"HTL",         fullName:"Hotel To Be Advised",           address:"",                            contact:"",           notes:"TBC" },
+  ];
+  db.hotels = hotelSeed.map((h,i) => ({ id: 300+i, ...h }));
+
   // Helper: look up chaperone/driver id by name string
   function chapId(name) { const c = db.chaperones.find(x=>x.name===name); return c?c.id:''; }
   function drvId(name)  { const d = db.drivers.find(x=>x.name===name);    return d?d.id:''; }
+  function htlId(name)  { const h = db.hotels.find(x=>x.name===name);     return h?h.id:''; }
 
   const raw = [
-    { name:"Prof Doug Petersen", spouse:"Sis Myrna", additional:"", country:"USA", title:"Professor Emeritus, School of Theology & Ministry, Vanguard University",
+    { name:"Prof Doug Petersen", spouse:"Sis Myrna", additional:"", additionalGuests:[], country:"USA", title:"Professor Emeritus, School of Theology & Ministry, Vanguard University",
       arr_flight:"SQ 37", arr_carrier:"Singapore Airlines", arr_from:"Los Angeles, CA", arr_date:"2026-07-11", arr_time:"07:50", arr_terminal:"T3",
       dep_flight:"SQ 38", dep_carrier:"Singapore Airlines", dep_to:"Los Angeles, CA", dep_date:"2026-07-27", dep_time:"20:45", dep_terminal:"T3",
-      hotel:"PPSS / PPH", checkin:"2026-07-11", checkout:"2026-07-28",
+      hotel:"PPSS / PPH", hotel_id:htlId("PPSS"), checkin:"2026-07-11", checkout:"2026-07-28",
       arr_chaperone_id:chapId("Ps Yong / Lincoln"), arr_driver_id:drvId("Samuel Wong"),   arr_plate:"",          arr_car:"MB / CLA",    arr_color:"RED",
       dep_chaperone_id:chapId("Ps Yong / Lincoln"), dep_driver_id:drvId("Lincoln Lim"),   dep_plate:"SKZ 5191 G",dep_car:"MB - GLC",    dep_color:"DARK GREY",
       arr_remarks:"", dep_remarks:"",
@@ -1763,7 +1931,15 @@ function showView(name) {
   if (name === 'hotel') renderHotel();
   if (name === 'chaperones') renderChaperones();
   if (name === 'drivers') renderDrivers();
-  if (name === 'add-guest') { renderFormCheckboxes(); populateChaperoneDriverSelects(); }
+  if (name === 'add-guest') {
+    populateHotelSelect();
+    populateChaperoneDriverSelects();
+    renderFormCheckboxes();
+    if (!document.getElementById('editGuestId').value) {
+      _currentAdditionalGuests = [];
+      renderAdditionalGuestsList([]);
+    }
+  }
   window.scrollTo(0,0);
 }
 
@@ -1808,6 +1984,12 @@ function dayOfWeek(d) {
 function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function terminalBadge(terminal, hasFlight) {
+  if (terminal) return `<span class="terminal-badge">${esc(terminal)}</span>`;
+  if (hasFlight) return `<span class="terminal-pending">⏳ PENDING</span>`;
+  return '—';
 }
 
 function showToast(msg, type='') {
@@ -1887,8 +2069,8 @@ function renderGuestCards(guests) {
       </div>
       <div class="guest-pills">${spousePill}${arrPill}${depPill}${hotelPill}</div>
       ${g.arr_date ? `<div class="guest-flight-info">
-        <strong>ARR</strong> ${fmtDate(g.arr_date)} ${fmtTime(g.arr_time)} ${g.arr_terminal ? `<span class="terminal-badge">${g.arr_terminal}</span>` : ''}
-        ${g.dep_date ? `<br><strong>DEP</strong> ${fmtDate(g.dep_date)} ${fmtTime(g.dep_time)} ${g.dep_terminal ? `<span class="terminal-badge">${g.dep_terminal}</span>` : ''}` : ''}
+        <strong>ARR</strong> ${fmtDate(g.arr_date)} ${fmtTime(g.arr_time)} ${terminalBadge(g.arr_terminal, !!g.arr_flight)}
+        ${g.dep_date ? `<br><strong>DEP</strong> ${fmtDate(g.dep_date)} ${fmtTime(g.dep_time)} ${terminalBadge(g.dep_terminal, !!g.dep_flight)}` : ''}
       </div>` : ''}
     </div>`;
   }).join('');
@@ -1918,6 +2100,10 @@ function openGuestModal(id) {
         <div class="info-item"><label>Room</label><span>${g.room||'—'}</span></div>
         <div class="info-item"><label>Check-in</label><span>${fmtDate(g.checkin)||'—'}</span></div>
         <div class="info-item"><label>Check-out</label><span>${fmtDate(g.checkout)||'—'}</span></div>
+        ${g.hotel2 ? `<div class="info-item"><label>2nd Hotel</label><span>${esc(g.hotel2)}</span></div>` : ''}
+        ${g.room2  ? `<div class="info-item"><label>2nd Room</label><span>${esc(g.room2)}</span></div>` : ''}
+        ${g.checkin2  ? `<div class="info-item"><label>2nd Check-in</label><span>${fmtDate(g.checkin2)}</span></div>` : ''}
+        ${g.checkout2 ? `<div class="info-item"><label>2nd Check-out</label><span>${fmtDate(g.checkout2)}</span></div>` : ''}
       </div>
       ${g.title ? `<div style="margin-top:10px; font-size:0.8rem; color:var(--slate); font-style:italic; line-height:1.6;">${esc(g.title)}</div>` : ''}
     </div>
@@ -1929,7 +2115,7 @@ function openGuestModal(id) {
         <div class="info-item"><label>From</label><span>${g.arr_from||'—'}</span></div>
         <div class="info-item"><label>Date</label><span>${fmtDate(g.arr_date)||'—'}</span></div>
         <div class="info-item"><label>Time</label><span>${fmtTime(g.arr_time)||'—'}</span></div>
-        <div class="info-item"><label>Terminal</label><span>${g.arr_terminal ? `<span class="terminal-badge">${g.arr_terminal}</span>` : '—'}</span></div>
+        <div class="info-item"><label>Terminal</label><span>${terminalBadge(g.arr_terminal, !!g.arr_flight)}</span></div>
         <div class="info-item"><label>Chaperone</label><span>${chapName(g.arr_chaperone_id)||'—'}</span></div>
         <div class="info-item"><label>Driver</label><span>${drvName(g.arr_driver_id)||'—'}</span></div>
         <div class="info-item"><label>Car</label><span>${[g.arr_car, g.arr_color, g.arr_plate].filter(Boolean).join(' · ')||'—'}</span></div>
@@ -1943,7 +2129,7 @@ function openGuestModal(id) {
         <div class="info-item"><label>To</label><span>${g.dep_to||'—'}</span></div>
         <div class="info-item"><label>Date</label><span>${fmtDate(g.dep_date)||'—'}</span></div>
         <div class="info-item"><label>Time</label><span>${fmtTime(g.dep_time)||'—'}</span></div>
-        <div class="info-item"><label>Terminal</label><span>${g.dep_terminal ? `<span class="terminal-badge">${g.dep_terminal}</span>` : '—'}</span></div>
+        <div class="info-item"><label>Terminal</label><span>${terminalBadge(g.dep_terminal, !!g.dep_flight)}</span></div>
         <div class="info-item"><label>Chaperone</label><span>${chapName(g.dep_chaperone_id)||'—'}</span></div>
         <div class="info-item"><label>Driver</label><span>${drvName(g.dep_driver_id)||'—'}</span></div>
         <div class="info-item"><label>Car</label><span>${[g.dep_car, g.dep_color, g.dep_plate].filter(Boolean).join(' · ')||'—'}</span></div>
@@ -2014,37 +2200,56 @@ function cbRow(prefix, items, type) {
 }
 
 function renderFormCheckboxes() {
-  const spouseName = document.getElementById('f_spouse')?.value.trim() || '';
-  const additionalName = document.getElementById('f_additional')?.value.trim() || '';
-  const hasSpouse = spouseName && spouseName !== '-' && spouseName !== '0';
-  const hasAdditional = !!additionalName;
+  const spouseName    = document.getElementById('f_spouse')?.value.trim() || '';
+  const hasSpouse     = spouseName && spouseName !== '-' && spouseName !== '0';
+  const addlPeople    = _currentAdditionalGuests.filter(a=>a.name&&a.name.trim());
+  const hasAdditional = addlPeople.length > 0;
 
-  // ── Meals ──
+  // ── Meals — Main guest ──
   const mc = document.getElementById('mealCheckboxes');
   if (mc) mc.innerHTML = cbRow('meal_cb', db.mealEvents, 'meal events');
 
+  // ── Meals — Spouse ──
   const msw = document.getElementById('mealCheckboxes_spouse_wrap');
-  const ms = document.getElementById('mealCheckboxes_spouse');
+  const ms  = document.getElementById('mealCheckboxes_spouse');
   if (msw && ms) {
     msw.style.display = hasSpouse ? '' : 'none';
     document.getElementById('meal_spouse_label').textContent = spouseName;
     ms.innerHTML = cbRow('meal_sp', db.mealEvents, 'meal events');
   }
 
+  // ── Meals — Per additional guest (one section each) ──
   const maw = document.getElementById('mealCheckboxes_additional_wrap');
-  const ma = document.getElementById('mealCheckboxes_additional');
+  const ma  = document.getElementById('mealCheckboxes_additional');
   if (maw && ma) {
     maw.style.display = hasAdditional ? '' : 'none';
-    document.getElementById('meal_additional_label').textContent = additionalName;
-    ma.innerHTML = cbRow('meal_add', db.mealEvents, 'meal events');
+    document.getElementById('meal_additional_label').textContent = addlPeople.map(a=>a.name).join(', ');
+    if (!db.mealEvents.length) {
+      ma.innerHTML = '<div style="font-size:0.82rem;color:var(--slate-light);">No meal events defined yet.</div>';
+    } else {
+      ma.innerHTML = addlPeople.map((ag, pi) => `
+        <div style="width:100%;margin-bottom:8px;">
+          <div style="font-size:0.7rem;font-weight:700;color:var(--blue);margin-bottom:5px;letter-spacing:0.04em;">
+            👤 ${esc(ag.name)}${ag.relation?` <span style="font-weight:400;font-style:italic;color:var(--slate-light);">(${esc(ag.relation)})</span>`:''}
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            ${db.mealEvents.map((m,mi) => `
+              <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;font-weight:500;cursor:pointer;background:var(--ivory);border:1px solid var(--border);border-radius:6px;padding:6px 12px;">
+                <input type="checkbox" id="meal_add_${pi}_${mi}" style="width:auto;"> ${esc(m.name)}
+                <span style="font-size:0.68rem;color:var(--slate-light);">${fmtDate(m.date)}</span>
+              </label>`).join('')}
+          </div>
+        </div>`).join('');
+    }
   }
 
-  // ── Activities ──
+  // ── Activities — Main guest ──
   const ac = document.getElementById('activityCheckboxes');
   if (ac) ac.innerHTML = db.activityOptions.length
     ? cbRow('act_cb', db.activityOptions, 'activities')
     : '<div style="font-size:0.82rem;color:var(--slate-light);">No activity options defined yet. Add them in the Activities tab.</div>';
 
+  // ── Activities — Spouse ──
   const asw = document.getElementById('activityCheckboxes_spouse_wrap');
   const as_ = document.getElementById('activityCheckboxes_spouse');
   if (asw && as_) {
@@ -2053,29 +2258,52 @@ function renderFormCheckboxes() {
     as_.innerHTML = db.activityOptions.length ? cbRow('act_sp', db.activityOptions, 'activities') : '<div style="font-size:0.82rem;color:var(--slate-light);">No activity options yet.</div>';
   }
 
+  // ── Activities — Per additional guest ──
   const aaw = document.getElementById('activityCheckboxes_additional_wrap');
-  const aa = document.getElementById('activityCheckboxes_additional');
+  const aa  = document.getElementById('activityCheckboxes_additional');
   if (aaw && aa) {
     aaw.style.display = hasAdditional ? '' : 'none';
-    document.getElementById('act_additional_label').textContent = additionalName;
-    aa.innerHTML = db.activityOptions.length ? cbRow('act_add', db.activityOptions, 'activities') : '<div style="font-size:0.82rem;color:var(--slate-light);">No activity options yet.</div>';
+    document.getElementById('act_additional_label').textContent = addlPeople.map(a=>a.name).join(', ');
+    if (!db.activityOptions.length) {
+      aa.innerHTML = '<div style="font-size:0.82rem;color:var(--slate-light);">No activity options yet.</div>';
+    } else {
+      aa.innerHTML = addlPeople.map((ag, pi) => `
+        <div style="width:100%;margin-bottom:8px;">
+          <div style="font-size:0.7rem;font-weight:700;color:var(--blue);margin-bottom:5px;letter-spacing:0.04em;">
+            👤 ${esc(ag.name)}${ag.relation?` <span style="font-weight:400;font-style:italic;color:var(--slate-light);">(${esc(ag.relation)})</span>`:''}
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            ${db.activityOptions.map((a,ai) => `
+              <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;font-weight:500;cursor:pointer;background:var(--ivory);border:1px solid var(--border);border-radius:6px;padding:6px 12px;">
+                <input type="checkbox" id="act_add_${pi}_${ai}" style="width:auto;"> ${esc(a.name)}
+                <span style="font-size:0.68rem;color:var(--slate-light);">${fmtDate(a.date)}</span>
+              </label>`).join('')}
+          </div>
+        </div>`).join('');
+    }
   }
 }
 
 function saveGuest(e) {
   e.preventDefault();
   const id = document.getElementById('editGuestId').value;
-  const mealAtt    = db.mealEvents.map((_,i) => document.getElementById(`meal_cb_${i}`)?.checked || false);
-  const mealSpAtt  = db.mealEvents.map((_,i) => document.getElementById(`meal_sp_${i}`)?.checked || false);
-  const mealAddAtt = db.mealEvents.map((_,i) => document.getElementById(`meal_add_${i}`)?.checked || false);
-  const actAtt     = db.activityOptions.map((_,i) => document.getElementById(`act_cb_${i}`)?.checked || false);
-  const actSpAtt   = db.activityOptions.map((_,i) => document.getElementById(`act_sp_${i}`)?.checked || false);
-  const actAddAtt  = db.activityOptions.map((_,i) => document.getElementById(`act_add_${i}`)?.checked || false);
+  const mealAtt   = db.mealEvents.map((_,i) => document.getElementById(`meal_cb_${i}`)?.checked || false);
+  const mealSpAtt = db.mealEvents.map((_,i) => document.getElementById(`meal_sp_${i}`)?.checked || false);
+  const actAtt    = db.activityOptions.map((_,i) => document.getElementById(`act_cb_${i}`)?.checked || false);
+  const actSpAtt  = db.activityOptions.map((_,i) => document.getElementById(`act_sp_${i}`)?.checked || false);
+
+  // Per-person additional attendance: array-of-arrays [personIdx][slotIdx]
+  const addlPeople = _currentAdditionalGuests.filter(a=>a.name&&a.name.trim());
+  const mealAddAtt = addlPeople.map((_,pi) =>
+    db.mealEvents.map((__,mi) => document.getElementById(`meal_add_${pi}_${mi}`)?.checked || false)
+  );
+  const actAddAtt = addlPeople.map((_,pi) =>
+    db.activityOptions.map((__,ai) => document.getElementById(`act_add_${pi}_${ai}`)?.checked || false)
+  );
 
   const guest = {
     name: document.getElementById('f_name').value.trim(),
     spouse: document.getElementById('f_spouse').value.trim(),
-    additional: document.getElementById('f_additional').value.trim(),
     country: document.getElementById('f_country').value.trim(),
     title: document.getElementById('f_title').value.trim(),
     arr_flight: document.getElementById('f_arr_flight').value.trim(),
@@ -2103,9 +2331,17 @@ function saveGuest(e) {
     dep_color: document.getElementById('f_dep_color').value.trim(),
     dep_remarks: document.getElementById('f_dep_remarks').value.trim(),
     hotel: document.getElementById('f_hotel').value.trim(),
+    hotel_id: parseInt(document.getElementById('f_hotel_id').value) || '',
     room: document.getElementById('f_room').value.trim(),
     checkin: document.getElementById('f_checkin').value,
     checkout: document.getElementById('f_checkout').value,
+    hotel2: document.getElementById('f_hotel2').value.trim(),
+    hotel2_id: parseInt(document.getElementById('f_hotel2_id').value) || '',
+    room2: document.getElementById('f_room2').value.trim(),
+    checkin2: document.getElementById('f_checkin2').value,
+    checkout2: document.getElementById('f_checkout2').value,
+    additionalGuests: getAdditionalGuestsFromForm(),
+    additional: getAdditionalGuestsFromForm().map(a=>a.name).join(', '),
     session1: document.getElementById('f_session1').value.trim(),
     respond1: document.getElementById('f_respond1').value.trim(),
     session2: document.getElementById('f_session2').value.trim(),
@@ -2146,15 +2382,34 @@ function editGuest(id) {
     document.getElementById('editGuestId').value = g.id;
     document.getElementById('formTitle').textContent = 'Edit Guest';
     document.getElementById('formDesc').textContent = 'Update the information for ' + g.name;
-    const fields = ['name','spouse','additional','country','title',
+    const fields = ['name','spouse','country','title',
       'arr_flight','arr_carrier','arr_from','arr_date','arr_time','arr_terminal','arr_plate','arr_car','arr_color','arr_remarks',
       'dep_flight','dep_carrier','dep_to','dep_date','dep_time','dep_terminal','dep_plate','dep_car','dep_color','dep_remarks',
-      'hotel','room','checkin','checkout','session1','respond1','session2','respond2',
+      'hotel','room','checkin','checkout',
+      'hotel2','room2','checkin2','checkout2',
+      'session1','respond1','session2','respond2',
       'allergen','foodpref','bevhot','bevcold','remark1','remark2'];
     fields.forEach(f => {
       const el = document.getElementById('f_' + f);
       if (el) el.value = g[f] || '';
     });
+    // Restore 2nd stay visibility
+    if (g.hotel2 || g.checkin2) {
+      toggleStay2(true);
+    } else {
+      toggleStay2(false);
+    }
+    // Restore hotel selects
+    populateHotelSelect();
+    setTimeout(() => {
+      const hs  = document.getElementById('f_hotel_id');
+      const hs2 = document.getElementById('f_hotel2_id');
+      if (hs)  hs.value  = g.hotel_id  || '';
+      if (hs2) hs2.value = g.hotel2_id || '';
+    }, 20);
+    // Restore additional guests list
+    _currentAdditionalGuests = (g.additionalGuests || []).map(a => ({...a}));
+    renderAdditionalGuestsList(_currentAdditionalGuests);
     // Restore chaperone/driver selects
     populateChaperoneDriverSelects();
     setTimeout(() => {
@@ -2172,12 +2427,26 @@ function editGuest(id) {
     }
     renderFormCheckboxes();
     setTimeout(() => {
-      if (g.mealAttendance)           g.mealAttendance.forEach((v,i)           => { const cb = document.getElementById(`meal_cb_${i}`);  if(cb) cb.checked = v; });
-      if (g.mealSpouseAttendance)     g.mealSpouseAttendance.forEach((v,i)     => { const cb = document.getElementById(`meal_sp_${i}`);  if(cb) cb.checked = v; });
-      if (g.mealAdditionalAttendance) g.mealAdditionalAttendance.forEach((v,i) => { const cb = document.getElementById(`meal_add_${i}`); if(cb) cb.checked = v; });
-      if (g.activityAttendance)           g.activityAttendance.forEach((v,i)           => { const cb = document.getElementById(`act_cb_${i}`);  if(cb) cb.checked = v; });
-      if (g.activitySpouseAttendance)     g.activitySpouseAttendance.forEach((v,i)     => { const cb = document.getElementById(`act_sp_${i}`);  if(cb) cb.checked = v; });
-      if (g.activityAdditionalAttendance) g.activityAdditionalAttendance.forEach((v,i) => { const cb = document.getElementById(`act_add_${i}`); if(cb) cb.checked = v; });
+      if (g.mealAttendance)       g.mealAttendance.forEach((v,i)       => { const cb = document.getElementById(`meal_cb_${i}`); if(cb) cb.checked = v; });
+      if (g.mealSpouseAttendance) g.mealSpouseAttendance.forEach((v,i) => { const cb = document.getElementById(`meal_sp_${i}`); if(cb) cb.checked = v; });
+      // Per-person additional meal checkboxes
+      if (Array.isArray(g.mealAdditionalAttendance)) {
+        g.mealAdditionalAttendance.forEach((personArr, pi) => {
+          if (Array.isArray(personArr)) {
+            personArr.forEach((v,mi) => { const cb = document.getElementById(`meal_add_${pi}_${mi}`); if(cb) cb.checked = v; });
+          }
+        });
+      }
+      if (g.activityAttendance)       g.activityAttendance.forEach((v,i)       => { const cb = document.getElementById(`act_cb_${i}`); if(cb) cb.checked = v; });
+      if (g.activitySpouseAttendance) g.activitySpouseAttendance.forEach((v,i) => { const cb = document.getElementById(`act_sp_${i}`); if(cb) cb.checked = v; });
+      // Per-person additional activity checkboxes
+      if (Array.isArray(g.activityAdditionalAttendance)) {
+        g.activityAdditionalAttendance.forEach((personArr, pi) => {
+          if (Array.isArray(personArr)) {
+            personArr.forEach((v,ai) => { const cb = document.getElementById(`act_add_${pi}_${ai}`); if(cb) cb.checked = v; });
+          }
+        });
+      }
     }, 50);
   }, 50);
 }
@@ -2190,6 +2459,9 @@ function clearForm() {
   document.getElementById('photoPreview').src = '';
   document.getElementById('photoPreview').style.display = 'none';
   document.getElementById('photoPlaceholder').style.display = 'flex';
+  toggleStay2(false);
+  _currentAdditionalGuests = [];
+  renderAdditionalGuestsList([]);
 }
 
 function deleteGuest(id) {
@@ -2234,7 +2506,7 @@ function renderArrivals() {
       <td class="td-flight">${esc(g.arr_flight)||'—'}</td>
       <td style="font-size:0.78rem;">${esc(g.arr_carrier)||'—'}</td>
       <td style="font-size:0.78rem;">${esc(g.arr_from)||'—'}</td>
-      <td>${g.arr_terminal ? `<span class="terminal-badge">${g.arr_terminal}</span>` : '—'}</td>
+      <td>${terminalBadge(g.arr_terminal, !!g.arr_flight)}</td>
       <td class="td-name">${esc(g.name)}</td>
       <td style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
       <td style="font-size:0.78rem;">${esc(chapName(g.arr_chaperone_id))||'—'}</td>
@@ -2264,7 +2536,7 @@ function renderDepartures() {
       <td class="td-flight">${esc(g.dep_flight)||'—'}</td>
       <td style="font-size:0.78rem;">${esc(g.dep_carrier)||'—'}</td>
       <td style="font-size:0.78rem;">${esc(g.dep_to)||'—'}</td>
-      <td>${g.dep_terminal ? `<span class="terminal-badge">${g.dep_terminal}</span>` : '—'}</td>
+      <td>${terminalBadge(g.dep_terminal, !!g.dep_flight)}</td>
       <td class="td-name">${esc(g.name)}</td>
       <td style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
       <td style="font-size:0.78rem;">${esc(chapName(g.dep_chaperone_id))||'—'}</td>
@@ -2320,8 +2592,8 @@ function renderMeals() {
   let rowIdx = 0;
   db.guests.forEach(g => {
     const validSpouse = g.spouse && g.spouse !== '-' && g.spouse !== '0' && g.spouse.trim();
-    const validAdditional = g.additional && g.additional.trim();
-    const groupSize = 1 + (validSpouse ? 1 : 0) + (validAdditional ? 1 : 0);
+    const addlPeople  = (g.additionalGuests||[]).filter(a=>a.name&&a.name.trim());
+    const groupSize   = 1 + (validSpouse ? 1 : 0) + addlPeople.length;
 
     // Main guest row
     const gCells = db.mealEvents.map((_,mi) => {
@@ -2350,24 +2622,66 @@ function renderMeals() {
       </tr>`);
     }
 
-    // Additional guest row
-    if (validAdditional) {
+    // One row PER additional guest
+    addlPeople.forEach((ag, pi) => {
+      if (!g.mealAdditionalAttendance) g.mealAdditionalAttendance = [];
+      if (!g.mealAdditionalAttendance[pi]) g.mealAdditionalAttendance[pi] = Array(db.mealEvents.length).fill(false);
       const aCells = db.mealEvents.map((_,mi) => {
-        const att = g.mealAdditionalAttendance && g.mealAdditionalAttendance[mi];
-        return `<td class="meal-check" style="cursor:pointer;background:#f0f4ff;" onclick="toggleMealAtt(${g.id},'mealAdditionalAttendance',${mi})" title="Click to toggle">
+        const att = g.mealAdditionalAttendance[pi][mi];
+        return `<td class="meal-check" style="cursor:pointer;background:#f0f4ff;" onclick="toggleMealAttPerson(${g.id},${pi},${mi},'meal')" title="Click to toggle">
           <span class="${att?'check-yes':'check-no'}">${att?'✓':'○'}</span></td>`;
       }).join('');
       rows.push(`<tr style="background:#f0f4ff;">
-        <td style="font-size:0.8rem; padding-left:18px; background:#f0f4ff;">${esc(g.additional)}</td>
+        <td style="font-size:0.8rem; padding-left:18px; background:#f0f4ff;">${esc(ag.name)}${ag.relation?` <span style="font-size:0.68rem;color:var(--slate-light);">(${esc(ag.relation)})</span>`:''}</td>
         <td style="background:#f0f4ff;"><span class="pill pill-arrival" style="font-size:0.65rem;">ADDL</span></td>
         ${aCells}
       </tr>`);
-    }
+    });
 
     // Separator row between guest groups
     rows.push(`<tr><td colspan="${3 + db.mealEvents.length}" style="padding:0;background:var(--border);height:1px;"></td></tr>`);
   });
   matBody.innerHTML = rows.join('') || '<tr><td colspan="20" style="text-align:center;padding:20px;color:var(--slate-light);">No guests yet.</td></tr>';
+
+  // ── Compute per-meal totals (each additional guest counted separately) ──
+  const mealTotals = db.mealEvents.map((_,mi) => {
+    let count = 0;
+    db.guests.forEach(g => {
+      if (g.mealAttendance?.[mi])       count++;
+      if (g.mealSpouseAttendance?.[mi]) count++;
+      // Per-person additional: mealAdditionalAttendance[personIdx][mealIdx]
+      if (Array.isArray(g.mealAdditionalAttendance)) {
+        g.mealAdditionalAttendance.forEach(personArr => {
+          if (Array.isArray(personArr) && personArr[mi]) count++;
+          else if (typeof personArr === 'boolean' && personArr) count++; // legacy flat
+        });
+      }
+    });
+    return count;
+  });
+
+  // Summary strip above matrix
+  const strip = document.getElementById('mealTotalsStrip');
+  if (strip) {
+    strip.innerHTML = db.mealEvents.length
+      ? db.mealEvents.map((m,mi) => `
+          <div style="background:var(--navy);color:white;border-radius:8px;padding:8px 14px;min-width:110px;text-align:center;">
+            <div style="font-size:1.4rem;font-weight:700;font-family:'Playfair Display',serif;color:var(--gold-light);">${mealTotals[mi]}</div>
+            <div style="font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;opacity:0.8;margin-top:2px;">${esc(m.name)}</div>
+            <div style="font-size:0.65rem;opacity:0.55;">${fmtDate(m.date)}</div>
+          </div>`).join('')
+      : '<div style="font-size:0.82rem;color:var(--slate-light);">No meal events yet.</div>';
+  }
+
+  // Totals footer row
+  const footer = document.getElementById('mealsMatrixFooter');
+  if (footer) {
+    footer.innerHTML =
+      `<td colspan="3" style="padding:8px 14px;font-size:0.78rem;font-weight:700;letter-spacing:0.04em;">TOTAL ATTENDING</td>` +
+      mealTotals.map(t =>
+        `<td class="meal-check" style="font-weight:700;font-size:1rem;color:var(--gold-light);">${t}</td>`
+      ).join('');
+  }
 }
 
 function addMealEvent() {
@@ -2403,8 +2717,13 @@ function saveMealEvent() {
     g.mealAttendance.push(false);
     if (!g.mealSpouseAttendance) g.mealSpouseAttendance=[];
     g.mealSpouseAttendance.push(false);
+    // Per-person additional: extend each person's array
     if (!g.mealAdditionalAttendance) g.mealAdditionalAttendance=[];
-    g.mealAdditionalAttendance.push(false);
+    const addlCount = (g.additionalGuests||[]).filter(a=>a.name&&a.name.trim()).length;
+    for (let pi=0; pi<addlCount; pi++) {
+      if (!g.mealAdditionalAttendance[pi]) g.mealAdditionalAttendance[pi]=[];
+      g.mealAdditionalAttendance[pi].push(false);
+    }
   }); }
   saveDB(); closeModal('mealModal'); renderMeals();
   showToast('✓ Meal event saved', 'success');
@@ -2413,9 +2732,11 @@ function deleteMealEvent(i) {
   if (!confirm('Remove this meal event?')) return;
   db.mealEvents.splice(i,1);
   db.guests.forEach(g => {
-    if (g.mealAttendance) g.mealAttendance.splice(i,1);
+    if (g.mealAttendance)       g.mealAttendance.splice(i,1);
     if (g.mealSpouseAttendance) g.mealSpouseAttendance.splice(i,1);
-    if (g.mealAdditionalAttendance) g.mealAdditionalAttendance.splice(i,1);
+    if (Array.isArray(g.mealAdditionalAttendance)) {
+      g.mealAdditionalAttendance.forEach(personArr => { if (Array.isArray(personArr)) personArr.splice(i,1); });
+    }
   });
   saveDB(); renderMeals();
 }
@@ -2449,8 +2770,8 @@ function renderActivities() {
   let rowIdx = 0;
   db.guests.forEach(g => {
     const validSpouse = g.spouse && g.spouse !== '-' && g.spouse !== '0' && g.spouse.trim();
-    const validAdditional = g.additional && g.additional.trim();
-    const groupSize = 1 + (validSpouse ? 1 : 0) + (validAdditional ? 1 : 0);
+    const addlPeople  = (g.additionalGuests||[]).filter(a=>a.name&&a.name.trim());
+    const groupSize   = 1 + (validSpouse ? 1 : 0) + addlPeople.length;
 
     const gCells = db.activityOptions.map((_,ai) => {
       const att = g.activityAttendance && g.activityAttendance[ai];
@@ -2477,22 +2798,64 @@ function renderActivities() {
       </tr>`);
     }
 
-    if (validAdditional) {
+    // One row PER additional guest
+    addlPeople.forEach((ag, pi) => {
+      if (!g.activityAdditionalAttendance) g.activityAdditionalAttendance = [];
+      if (!g.activityAdditionalAttendance[pi]) g.activityAdditionalAttendance[pi] = Array(db.activityOptions.length).fill(false);
       const aCells = db.activityOptions.map((_,ai) => {
-        const att = g.activityAdditionalAttendance && g.activityAdditionalAttendance[ai];
-        return `<td class="meal-check" style="cursor:pointer;background:#f0f4ff;" onclick="toggleActAtt(${g.id},'activityAdditionalAttendance',${ai})" title="Click to toggle">
+        const att = g.activityAdditionalAttendance[pi][ai];
+        return `<td class="meal-check" style="cursor:pointer;background:#f0f4ff;" onclick="toggleMealAttPerson(${g.id},${pi},${ai},'act')" title="Click to toggle">
           <span class="${att?'check-yes':'check-no'}">${att?'✓':'○'}</span></td>`;
       }).join('');
       rows.push(`<tr style="background:#f0f4ff;">
-        <td style="font-size:0.8rem;padding-left:18px;background:#f0f4ff;">${esc(g.additional)}</td>
+        <td style="font-size:0.8rem;padding-left:18px;background:#f0f4ff;">${esc(ag.name)}${ag.relation?` <span style="font-size:0.68rem;color:var(--slate-light);">(${esc(ag.relation)})</span>`:''}</td>
         <td style="background:#f0f4ff;"><span class="pill pill-arrival" style="font-size:0.65rem;">ADDL</span></td>
         ${aCells}
       </tr>`);
-    }
+    });
 
     rows.push(`<tr><td colspan="${3 + db.activityOptions.length}" style="padding:0;background:var(--border);height:1px;"></td></tr>`);
   });
   matBody.innerHTML = rows.join('') || `<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--slate-light);">No guests yet.</td></tr>`;
+
+  // ── Compute per-activity totals (each additional guest counted separately) ──
+  const actTotals = db.activityOptions.map((_,ai) => {
+    let count = 0;
+    db.guests.forEach(g => {
+      if (g.activityAttendance?.[ai])       count++;
+      if (g.activitySpouseAttendance?.[ai]) count++;
+      if (Array.isArray(g.activityAdditionalAttendance)) {
+        g.activityAdditionalAttendance.forEach(personArr => {
+          if (Array.isArray(personArr) && personArr[ai]) count++;
+          else if (typeof personArr === 'boolean' && personArr) count++;
+        });
+      }
+    });
+    return count;
+  });
+
+  // Summary strip
+  const actStrip = document.getElementById('actTotalsStrip');
+  if (actStrip) {
+    actStrip.innerHTML = db.activityOptions.length
+      ? db.activityOptions.map((a,ai) => `
+          <div style="background:var(--navy);color:white;border-radius:8px;padding:8px 14px;min-width:110px;text-align:center;">
+            <div style="font-size:1.4rem;font-weight:700;font-family:'Playfair Display',serif;color:var(--gold-light);">${actTotals[ai]}</div>
+            <div style="font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;opacity:0.8;margin-top:2px;">${esc(a.name)}</div>
+            <div style="font-size:0.65rem;opacity:0.55;">${fmtDate(a.date)}</div>
+          </div>`).join('')
+      : '<div style="font-size:0.82rem;color:var(--slate-light);">No activities yet.</div>';
+  }
+
+  // Totals footer row
+  const actFooter = document.getElementById('activityMatrixFooter');
+  if (actFooter) {
+    actFooter.innerHTML =
+      `<td colspan="3" style="padding:8px 14px;font-size:0.78rem;font-weight:700;letter-spacing:0.04em;">TOTAL ATTENDING</td>` +
+      actTotals.map(t =>
+        `<td class="meal-check" style="font-weight:700;font-size:1rem;color:var(--gold-light);">${t}</td>`
+      ).join('');
+  }
 }
 
 function addActivityOption() {
@@ -2523,8 +2886,13 @@ function saveActivityOption() {
     g.activityAttendance.push(false);
     if (!g.activitySpouseAttendance) g.activitySpouseAttendance=[];
     g.activitySpouseAttendance.push(false);
+    // Per-person additional
     if (!g.activityAdditionalAttendance) g.activityAdditionalAttendance=[];
-    g.activityAdditionalAttendance.push(false);
+    const addlCount = (g.additionalGuests||[]).filter(a=>a.name&&a.name.trim()).length;
+    for (let pi=0; pi<addlCount; pi++) {
+      if (!g.activityAdditionalAttendance[pi]) g.activityAdditionalAttendance[pi]=[];
+      g.activityAdditionalAttendance[pi].push(false);
+    }
   }); }
   saveDB(); closeModal('activityModal'); renderActivities();
   showToast('✓ Activity saved', 'success');
@@ -2533,9 +2901,11 @@ function deleteActivityOption(i) {
   if (!confirm('Remove this activity option?')) return;
   db.activityOptions.splice(i,1);
   db.guests.forEach(g => {
-    if (g.activityAttendance) g.activityAttendance.splice(i,1);
+    if (g.activityAttendance)       g.activityAttendance.splice(i,1);
     if (g.activitySpouseAttendance) g.activitySpouseAttendance.splice(i,1);
-    if (g.activityAdditionalAttendance) g.activityAdditionalAttendance.splice(i,1);
+    if (Array.isArray(g.activityAdditionalAttendance)) {
+      g.activityAdditionalAttendance.forEach(personArr => { if (Array.isArray(personArr)) personArr.splice(i,1); });
+    }
   });
   saveDB(); renderActivities();
 }
@@ -2556,6 +2926,22 @@ function toggleActAtt(guestId, field, idx) {
   if (!g[field]) g[field] = db.activityOptions.map(() => false);
   g[field][idx] = !g[field][idx];
   saveDB(); renderActivities();
+}
+// Toggle attendance for a specific additional guest person (per-person model)
+function toggleMealAttPerson(guestId, personIdx, slotIdx, type) {
+  const g = db.guests.find(x => x.id === guestId);
+  if (!g) return;
+  if (type === 'meal') {
+    if (!g.mealAdditionalAttendance) g.mealAdditionalAttendance = [];
+    if (!g.mealAdditionalAttendance[personIdx]) g.mealAdditionalAttendance[personIdx] = Array(db.mealEvents.length).fill(false);
+    g.mealAdditionalAttendance[personIdx][slotIdx] = !g.mealAdditionalAttendance[personIdx][slotIdx];
+    saveDB(); renderMeals();
+  } else {
+    if (!g.activityAdditionalAttendance) g.activityAdditionalAttendance = [];
+    if (!g.activityAdditionalAttendance[personIdx]) g.activityAdditionalAttendance[personIdx] = Array(db.activityOptions.length).fill(false);
+    g.activityAdditionalAttendance[personIdx][slotIdx] = !g.activityAdditionalAttendance[personIdx][slotIdx];
+    saveDB(); renderActivities();
+  }
 }
 function renderEvents() {
   const body = document.getElementById('eventsBody');
@@ -2623,30 +3009,203 @@ function deleteEventRow(i) {
 }
 
 // ═══════════════════════════════════════════
-//  HOTEL VIEW
+//  HOTEL VIEW & REGISTER
 // ═══════════════════════════════════════════
 function renderHotel() {
+  // Hotel register
+  const reg = document.getElementById('hotelRegisterBody');
+  if (reg) {
+    reg.innerHTML = db.hotels.length ? db.hotels.map((h,i) => {
+      const guestCount = db.guests.filter(g => g.hotel_id == h.id || g.hotel === h.name).length;
+      return `<tr>
+        <td>${i+1}</td>
+        <td><strong>${esc(h.name)}</strong></td>
+        <td style="font-size:0.82rem;">${esc(h.fullName)||'—'}</td>
+        <td style="font-size:0.78rem;">${esc(h.address)||'—'}</td>
+        <td style="font-size:0.78rem;">${esc(h.contact)||'—'}</td>
+        <td style="font-size:0.78rem;color:var(--slate-light);">${esc(h.notes)||'—'}</td>
+        <td><span class="pill pill-hotel">${guestCount} guest${guestCount!==1?'s':''}</span></td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-outline btn-sm" onclick="editHotel(${h.id})">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteHotel(${h.id})">🗑</button>
+        </td>
+      </tr>`;
+    }).join('')
+    : '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--slate-light);">No hotels yet. Click "+ Add Hotel" to create one.</td></tr>';
+  }
+
+  // Guest schedule
   const body = document.getElementById('hotelBody');
-  body.innerHTML = db.guests.filter(g => g.hotel||g.checkin).map((g,i) => {
-    let nights = '—';
-    if (g.checkin && g.checkout) {
-      const diff = (new Date(g.checkout) - new Date(g.checkin)) / 86400000;
-      nights = diff > 0 ? diff : '—';
-    }
-    return `<tr>
-      <td>${i+1}</td>
-      <td class="td-name">${esc(g.name)}</td>
-      <td style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
-      <td>${esc(g.hotel)||'—'}</td>
+  body.innerHTML = db.guests.filter(g => g.hotel||g.hotel_id||g.hotel2||g.checkin).map((g,i) => {
+    const nights1 = (g.checkin && g.checkout)
+      ? Math.max(0, Math.round((new Date(g.checkout) - new Date(g.checkin)) / 86400000)) || '—'
+      : '—';
+    const nights2 = (g.checkin2 && g.checkout2)
+      ? Math.max(0, Math.round((new Date(g.checkout2) - new Date(g.checkin2)) / 86400000)) || '—'
+      : '—';
+    const hotelDisplay  = g.hotel_id  ? (db.hotels.find(h=>h.id==g.hotel_id)?.name  || g.hotel  || '—') : (g.hotel ||'—');
+    const hotel2Display = g.hotel2_id ? (db.hotels.find(h=>h.id==g.hotel2_id)?.name || g.hotel2 || '')  : (g.hotel2||'');
+    const addlNames = (g.additionalGuests||[]).map(a=>esc(a.name)).join(', ') || '—';
+    const has2nd = hotel2Display || g.checkin2;
+    const rowSpan = has2nd ? 2 : 1;
+
+    let html = `<tr>
+      <td rowspan="${rowSpan}" style="font-weight:700;text-align:center;">${i+1}</td>
+      <td rowspan="${rowSpan}" class="td-name">${esc(g.name)}</td>
+      <td rowspan="${rowSpan}" style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
+      <td rowspan="${rowSpan}" style="font-size:0.75rem;">${addlNames}</td>
+      <td><span class="pill pill-hotel" style="font-size:0.68rem;">1st</span> ${esc(hotelDisplay)}</td>
       <td>${esc(g.room)||'—'}</td>
       <td>${fmtDate(g.arr_date)}<br><span style="font-size:0.72rem;color:var(--slate-light);">${fmtTime(g.arr_time)}</span></td>
       <td>${fmtDate(g.checkin)||'—'}</td>
       <td>${fmtDate(g.dep_date)}<br><span style="font-size:0.72rem;color:var(--slate-light);">${fmtTime(g.dep_time)}</span></td>
       <td>${fmtDate(g.checkout)||'—'}</td>
-      <td><strong>${nights}</strong></td>
+      <td><strong>${nights1}</strong></td>
+      <td rowspan="${rowSpan}"><button class="btn btn-outline btn-sm" onclick="editGuest(${g.id});showView('add-guest')">✏️</button></td>
     </tr>`;
-  }).join('') || '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--slate-light);">No hotel data yet.</td></tr>';
+
+    if (has2nd) {
+      html += `<tr style="background:#f0f4ff;">
+        <td style="background:#f0f4ff;"><span class="pill pill-arrival" style="font-size:0.68rem;">2nd</span> ${esc(hotel2Display)||'—'}</td>
+        <td style="background:#f0f4ff;">${esc(g.room2)||'—'}</td>
+        <td style="background:#f0f4ff;">—</td>
+        <td style="background:#f0f4ff;">${fmtDate(g.checkin2)||'—'}</td>
+        <td style="background:#f0f4ff;">—</td>
+        <td style="background:#f0f4ff;">${fmtDate(g.checkout2)||'—'}</td>
+        <td style="background:#f0f4ff;"><strong>${nights2}</strong></td>
+      </tr>`;
+    }
+    return html;
+  }).join('') || '<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--slate-light);">No hotel data yet.</td></tr>';
 }
+
+function openHotelModal() {
+  document.getElementById('hotelModalTitle').textContent = 'Add Hotel';
+  ['ht_name','ht_fullName','ht_address','ht_contact','ht_notes'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('ht_editId').value = '';
+  document.getElementById('hotelModal').classList.add('open');
+}
+function editHotel(id) {
+  const h = db.hotels.find(x => x.id === id);
+  if (!h) return;
+  document.getElementById('hotelModalTitle').textContent = 'Edit Hotel';
+  document.getElementById('ht_name').value     = h.name||'';
+  document.getElementById('ht_fullName').value = h.fullName||'';
+  document.getElementById('ht_address').value  = h.address||'';
+  document.getElementById('ht_contact').value  = h.contact||'';
+  document.getElementById('ht_notes').value    = h.notes||'';
+  document.getElementById('ht_editId').value   = h.id;
+  document.getElementById('hotelModal').classList.add('open');
+}
+function saveHotel() {
+  const name = document.getElementById('ht_name').value.trim();
+  if (!name) { showToast('Short name is required', 'error'); return; }
+  const obj = {
+    name,
+    fullName: document.getElementById('ht_fullName').value.trim(),
+    address:  document.getElementById('ht_address').value.trim(),
+    contact:  document.getElementById('ht_contact').value.trim(),
+    notes:    document.getElementById('ht_notes').value.trim()
+  };
+  const editId = document.getElementById('ht_editId').value;
+  if (editId) {
+    const idx = db.hotels.findIndex(x => x.id === parseInt(editId));
+    if (idx >= 0) { obj.id = parseInt(editId); db.hotels[idx] = obj; }
+  } else {
+    obj.id = Date.now();
+    db.hotels.push(obj);
+  }
+  saveDB(); closeModal('hotelModal');
+  populateHotelSelect();
+  if (document.getElementById('view-hotel').classList.contains('active')) renderHotel();
+  showToast('✓ Hotel saved', 'success');
+}
+function deleteHotel(id) {
+  if (!confirm('Remove this hotel? Guest assignments using this hotel will show the name only.')) return;
+  db.hotels = db.hotels.filter(x => x.id !== id);
+  saveDB(); renderHotel();
+}
+function populateHotelSelect() {
+  const opts = '<option value="">— Select Hotel —</option>' +
+    db.hotels.map(h => `<option value="${h.id}">${esc(h.name)}${h.fullName?' — '+esc(h.fullName):''}</option>`).join('');
+  ['f_hotel_id','f_hotel2_id'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = opts;
+    if (cur) sel.value = cur;
+  });
+}
+function syncHotelName(suffix, idSuffix) {
+  // suffix='' → 1st stay; suffix='2' → 2nd stay
+  const sel = document.getElementById(`f_hotel${idSuffix}_id`);
+  const txt = document.getElementById(`f_hotel${suffix}`);
+  if (!sel || !txt) return;
+  const h = db.hotels.find(x => x.id == parseInt(sel.value));
+  if (h) txt.value = h.name;
+}
+function toggleStay2(show) {
+  document.getElementById('stay2_block').style.display     = show ? '' : 'none';
+  document.getElementById('btn_add_stay2').style.display   = show ? 'none' : '';
+  document.getElementById('btn_remove_stay2').style.display = show ? '' : 'none';
+  if (!show) {
+    ['f_hotel2','f_room2','f_checkin2','f_checkout2'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    const sel = document.getElementById('f_hotel2_id');
+    if (sel) sel.value = '';
+  }
+}
+
+// ═══════════════════════════════════════════
+//  ADDITIONAL GUESTS DYNAMIC LIST
+// ═══════════════════════════════════════════
+function renderAdditionalGuestsList(guests) {
+  const list = document.getElementById('additionalGuestsList');
+  if (!list) return;
+  if (!guests || !guests.length) {
+    list.innerHTML = '<div style="font-size:0.78rem;color:var(--slate-light);font-style:italic;">No additional guests added yet.</div>';
+    return;
+  }
+  list.innerHTML = guests.map((ag, i) => `
+    <div style="display:flex;gap:8px;align-items:center;background:var(--ivory);border:1px solid var(--border);border-radius:6px;padding:6px 10px;">
+      <span style="font-size:0.8rem;font-weight:700;color:var(--navy);min-width:16px;">${i+1}</span>
+      <input type="text" value="${esc(ag.name)}" placeholder="Guest name"
+        style="flex:2;border:none;background:transparent;font-size:0.82rem;outline:none;color:var(--navy);"
+        oninput="updateAdditionalGuest(${i},'name',this.value)">
+      <input type="text" value="${esc(ag.relation||'')}" placeholder="Relation (e.g. Son)"
+        style="flex:1;border:none;background:transparent;font-size:0.78rem;outline:none;color:var(--slate-light);"
+        oninput="updateAdditionalGuest(${i},'relation',this.value)">
+      <button type="button" onclick="removeAdditionalGuest(${i})"
+        style="background:none;border:none;cursor:pointer;color:var(--red);font-size:1rem;padding:0 4px;">✕</button>
+    </div>`).join('');
+}
+
+let _currentAdditionalGuests = [];
+
+function addAdditionalGuestRow() {
+  _currentAdditionalGuests.push({ name:'', relation:'' });
+  renderAdditionalGuestsList(_currentAdditionalGuests);
+  renderFormCheckboxes();
+}
+function removeAdditionalGuest(i) {
+  _currentAdditionalGuests.splice(i,1);
+  renderAdditionalGuestsList(_currentAdditionalGuests);
+  renderFormCheckboxes();
+}
+function updateAdditionalGuest(i, field, val) {
+  if (_currentAdditionalGuests[i]) {
+    _currentAdditionalGuests[i][field] = val;
+    renderFormCheckboxes();
+  }
+}
+function getAdditionalGuestsFromForm() {
+  return _currentAdditionalGuests.filter(ag => ag.name.trim());
+}
+
+// ═══════════════════════════════════════════
+//  HOTEL VIEW & REGISTER — end marker (functions above)
+// ═══════════════════════════════════════════
 
 // ═══════════════════════════════════════════
 //  CHAPERONE / DRIVER HELPERS
@@ -2861,7 +3420,7 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
 // ═══════════════════════════════════════════
 
 // ── Set your team password here ──────────────
-const APP_PASSWORD = 'PYLJJ';
+const APP_PASSWORD = 'APS2026';
 // ─────────────────────────────────────────────
 
 const SESSION_KEY = 'aps2026_auth';
