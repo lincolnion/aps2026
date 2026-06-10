@@ -1797,11 +1797,11 @@ async function _doSave() {
   if (!_firestoreDb) return;
   try {
     const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    // Firestore does not support nested arrays — convert to safe format before saving
-    await setDoc(doc(_firestoreDb, 'aps2026', 'maindb'), _toFirestore(db));
+    const payload = _toFirestore(db);
+    await setDoc(doc(_firestoreDb, 'aps2026', 'maindb'), payload);
     showSyncIndicator('saved');
   } catch(e) {
-    console.error('Firestore save failed:', e);
+    console.error('Firestore save failed:', e.code, e.message, e);
     showSyncIndicator('error');
   }
 }
@@ -1809,8 +1809,9 @@ async function _doSave() {
 // Convert nested arrays → Firestore-safe objects (and back)
 function _toFirestore(data) {
   const d = JSON.parse(JSON.stringify(data)); // deep clone
+
+  // ── Guest nested arrays → maps ──────────────────────────────────────────
   (d.guests||[]).forEach(g => {
-    // Convert array-of-arrays to { "0": [...], "1": [...] } maps
     if (Array.isArray(g.mealAdditionalAttendance) && Array.isArray(g.mealAdditionalAttendance[0])) {
       const m = {};
       g.mealAdditionalAttendance.forEach((arr,i) => { m[String(i)] = arr; });
@@ -1822,12 +1823,46 @@ function _toFirestore(data) {
       g.activityAdditionalAttendance = m;
     }
   });
+
+  // ── mealHosts: integer keys → string keys ────────────────────────────────
+  // Firestore does not allow integer map keys
+  if (d.mealHosts) {
+    const mh = {};
+    Object.keys(d.mealHosts).forEach(k => { mh['mi_' + k] = d.mealHosts[k]; });
+    d.mealHosts = mh;
+  }
+
+  // ── checkinLog: pipe chars in keys → replace | with __ ──────────────────
+  // Firestore does not allow | in field names
+  if (d.checkinLog) {
+    const cl = {};
+    Object.keys(d.checkinLog).forEach(k => {
+      cl[k.replace(/\|/g, '__')] = d.checkinLog[k];
+    });
+    d.checkinLog = cl;
+  }
+
+  // ── seatingPlans: assignments keys use _ which is fine; ─────────────────
+  // but tables array has float coords — round them to avoid precision issues
+  if (d.seatingPlans) {
+    Object.keys(d.seatingPlans).forEach(planKey => {
+      const plan = d.seatingPlans[planKey];
+      if (plan && Array.isArray(plan.tables)) {
+        plan.tables.forEach(t => {
+          t.x = Math.round(t.x * 100) / 100;
+          t.y = Math.round(t.y * 100) / 100;
+        });
+      }
+      // assignments keys use t1_s0 format — fine, no pipe chars
+    });
+  }
+
   return d;
 }
 
 function _fromFirestore(data) {
+  // ── Guest maps → nested arrays ───────────────────────────────────────────
   (data.guests||[]).forEach(g => {
-    // Convert maps back to array-of-arrays
     if (g.mealAdditionalAttendance && !Array.isArray(g.mealAdditionalAttendance)) {
       const m = g.mealAdditionalAttendance;
       g.mealAdditionalAttendance = Object.keys(m).sort((a,b)=>+a-+b).map(k => m[k]);
@@ -1837,6 +1872,26 @@ function _fromFirestore(data) {
       g.activityAdditionalAttendance = Object.keys(m).sort((a,b)=>+a-+b).map(k => m[k]);
     }
   });
+
+  // ── mealHosts: string keys → integer keys ────────────────────────────────
+  if (data.mealHosts) {
+    const mh = {};
+    Object.keys(data.mealHosts).forEach(k => {
+      const numKey = k.startsWith('mi_') ? k.slice(3) : k;
+      mh[numKey] = data.mealHosts[k];
+    });
+    data.mealHosts = mh;
+  }
+
+  // ── checkinLog: __ → | ───────────────────────────────────────────────────
+  if (data.checkinLog) {
+    const cl = {};
+    Object.keys(data.checkinLog).forEach(k => {
+      cl[k.replace(/__/g, '|')] = data.checkinLog[k];
+    });
+    data.checkinLog = cl;
+  }
+
   return data;
 }
 
@@ -4907,7 +4962,7 @@ function openSeatPicker(seatId) { openSeatPickerSVG(seatId); }
 // ═══════════════════════════════════════════
 
 // ── Set your team password here ──────────────
-const APP_PASSWORD = 'PYLJJ';
+const APP_PASSWORD = 'APS2026';
 // ─────────────────────────────────────────────
 
 const SESSION_KEY = 'aps2026_auth';
