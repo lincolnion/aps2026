@@ -387,14 +387,78 @@
     .modal-overlay { padding: 0; align-items: flex-end; }
     .modal { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
   }
+  /* ── PASSWORD SCREEN ── */
+  .pw-overlay {
+    position: fixed; inset: 0; z-index: 99999;
+    background: var(--navy);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    transition: opacity 0.3s ease;
+  }
+  .pw-overlay.hidden { opacity: 0; pointer-events: none; }
+  .pw-box {
+    background: white; border-radius: 16px;
+    padding: 36px 32px; width: 100%; max-width: 380px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    text-align: center;
+  }
+  .pw-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem; font-weight: 700;
+    color: var(--navy); margin-bottom: 4px;
+  }
+  .pw-subtitle { font-size: 0.8rem; color: var(--slate-light); margin-bottom: 28px; }
+  .pw-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--slate); display: block; text-align: left; margin-bottom: 6px; }
+  .pw-input {
+    width: 100%; padding: 11px 14px; border: 2px solid var(--border);
+    border-radius: var(--radius); font-size: 1rem; font-family: 'Inter', sans-serif;
+    color: var(--navy); outline: none; text-align: center; letter-spacing: 0.15em;
+    transition: border-color 0.15s;
+  }
+  .pw-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(200,149,42,0.15); }
+  .pw-input.error { border-color: var(--red); animation: shake 0.35s ease; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }
+  .pw-btn {
+    width: 100%; margin-top: 14px; padding: 12px;
+    background: var(--navy); color: white;
+    border: none; border-radius: var(--radius);
+    font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 600;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .pw-btn:hover { background: var(--navy-light); }
+  .pw-error { color: var(--red); font-size: 0.78rem; margin-top: 8px; min-height: 18px; }
+  .pw-hint { font-size: 0.72rem; color: var(--slate-light); margin-top: 20px; }
+  .lock-btn {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.7); padding: 4px 10px; border-radius: 6px;
+    font-size: 0.72rem; font-weight: 600; cursor: pointer;
+    font-family: 'Inter', sans-serif; transition: all 0.15s; margin-left: 8px;
+  }
+  .lock-btn:hover { background: rgba(255,255,255,0.2); color: white; }
 </style>
 </head>
 <body>
+
+<!-- ── PASSWORD SCREEN ─────────────────────────────── -->
+<div class="pw-overlay" id="pwOverlay">
+  <div class="pw-box">
+    <div class="pw-logo">APS 2026</div>
+    <div class="pw-subtitle">Guest Management System</div>
+    <label class="pw-label" for="pwInput">Enter Access Password</label>
+    <input class="pw-input" type="password" id="pwInput" placeholder="••••••••"
+      autocomplete="current-password"
+      onkeydown="if(event.key==='Enter') checkPassword()">
+    <div class="pw-error" id="pwError"></div>
+    <button class="pw-btn" onclick="checkPassword()">🔓 Unlock</button>
+    <div class="pw-hint">Contact your administrator if you do not have the password.</div>
+  </div>
+</div>
 
 <header class="app-header">
   <div class="logo">APS 2026 <span class="subtitle">/ Guest Management</span></div>
   <div class="header-spacer"></div>
   <div class="guest-count-badge" id="headerGuestCount">Loading…</div>
+  <button class="lock-btn" onclick="lockApp()" title="Lock the app">🔒 Lock</button>
 </header>
 
 <nav class="nav-bar">
@@ -2792,6 +2856,52 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
 // ═══════════════════════════════════════════
 //  INIT — Firebase async bootstrap
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+//  PASSWORD / ACCESS CONTROL
+// ═══════════════════════════════════════════
+
+// ── Set your team password here ──────────────
+const APP_PASSWORD = 'APS2026';
+// ─────────────────────────────────────────────
+
+const SESSION_KEY = 'aps2026_auth';
+
+function isUnlocked() {
+  return sessionStorage.getItem(SESSION_KEY) === 'true';
+}
+
+function checkPassword() {
+  const input = document.getElementById('pwInput');
+  const errEl = document.getElementById('pwError');
+  const val   = input.value.trim();
+
+  if (val === APP_PASSWORD) {
+    sessionStorage.setItem(SESSION_KEY, 'true');
+    const overlay = document.getElementById('pwOverlay');
+    overlay.classList.add('hidden');
+    setTimeout(() => { overlay.style.display = 'none'; }, 350);
+    errEl.textContent = '';
+    // Kick off Firebase init now that user is authenticated
+    initFirebase();
+  } else {
+    errEl.textContent = 'Incorrect password. Please try again.';
+    input.classList.add('error');
+    input.value = '';
+    setTimeout(() => input.classList.remove('error'), 400);
+    input.focus();
+  }
+}
+
+function lockApp() {
+  if (!confirm('Lock the app? You will need to enter the password again.')) return;
+  sessionStorage.removeItem(SESSION_KEY);
+  location.reload();
+}
+
+// ═══════════════════════════════════════════
+//  INIT — Firebase async bootstrap
+// ═══════════════════════════════════════════
+async function initFirebase() {
 (async () => {
   try {
     const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
@@ -2819,6 +2929,18 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
     renderGuestList();
   }
 })();
+}
+
+// On page load — check if already authenticated this session
+if (isUnlocked()) {
+  // Already logged in — hide overlay immediately and start app
+  const overlay = document.getElementById('pwOverlay');
+  overlay.style.display = 'none';
+  initFirebase();
+} else {
+  // Show password screen — focus input
+  document.getElementById('pwInput').focus();
+}
 </script>
 </body>
 </html>
