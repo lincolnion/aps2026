@@ -1449,7 +1449,7 @@ async function _loadFromFirestore() {
     const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const snap = await getDoc(doc(_firestoreDb, 'aps2026', 'maindb'));
     if (snap.exists()) {
-      db = snap.data();
+      db = _fromFirestore(snap.data());
       migrateDB();
     } else {
       seedData();
@@ -1483,12 +1483,47 @@ async function _doSave() {
   if (!_firestoreDb) return;
   try {
     const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    await setDoc(doc(_firestoreDb, 'aps2026', 'maindb'), db);
+    // Firestore does not support nested arrays — convert to safe format before saving
+    await setDoc(doc(_firestoreDb, 'aps2026', 'maindb'), _toFirestore(db));
     showSyncIndicator('saved');
   } catch(e) {
     console.error('Firestore save failed:', e);
     showSyncIndicator('error');
   }
+}
+
+// Convert nested arrays → Firestore-safe objects (and back)
+function _toFirestore(data) {
+  const d = JSON.parse(JSON.stringify(data)); // deep clone
+  (d.guests||[]).forEach(g => {
+    // Convert array-of-arrays to { "0": [...], "1": [...] } maps
+    if (Array.isArray(g.mealAdditionalAttendance) && Array.isArray(g.mealAdditionalAttendance[0])) {
+      const m = {};
+      g.mealAdditionalAttendance.forEach((arr,i) => { m[String(i)] = arr; });
+      g.mealAdditionalAttendance = m;
+    }
+    if (Array.isArray(g.activityAdditionalAttendance) && Array.isArray(g.activityAdditionalAttendance[0])) {
+      const m = {};
+      g.activityAdditionalAttendance.forEach((arr,i) => { m[String(i)] = arr; });
+      g.activityAdditionalAttendance = m;
+    }
+  });
+  return d;
+}
+
+function _fromFirestore(data) {
+  (data.guests||[]).forEach(g => {
+    // Convert maps back to array-of-arrays
+    if (g.mealAdditionalAttendance && !Array.isArray(g.mealAdditionalAttendance)) {
+      const m = g.mealAdditionalAttendance;
+      g.mealAdditionalAttendance = Object.keys(m).sort((a,b)=>+a-+b).map(k => m[k]);
+    }
+    if (g.activityAdditionalAttendance && !Array.isArray(g.activityAdditionalAttendance)) {
+      const m = g.activityAdditionalAttendance;
+      g.activityAdditionalAttendance = Object.keys(m).sort((a,b)=>+a-+b).map(k => m[k]);
+    }
+  });
+  return data;
 }
 
 let _syncBadgeTimer = null;
@@ -3420,7 +3455,7 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
 // ═══════════════════════════════════════════
 
 // ── Set your team password here ──────────────
-const APP_PASSWORD = 'PYLJJ';
+const APP_PASSWORD = 'APS2026';
 // ─────────────────────────────────────────────
 
 const SESSION_KEY = 'aps2026_auth';
