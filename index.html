@@ -1,0 +1,2824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APS 2026 — Guest Management</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+
+  :root {
+    --navy: #1a2744;
+    --navy-light: #243158;
+    --gold: #c8952a;
+    --gold-light: #e8b84b;
+    --ivory: #f7f5f0;
+    --white: #ffffff;
+    --slate: #4a5568;
+    --slate-light: #718096;
+    --border: #e2d9c8;
+    --bg: #f4f0e8;
+    --green: #2d7a4f;
+    --green-bg: #e8f5ee;
+    --red: #c0392b;
+    --red-bg: #fdecea;
+    --blue-bg: #eef2ff;
+    --blue: #3b5bdb;
+    --tag-bg: #eee8d9;
+    --shadow-sm: 0 1px 3px rgba(26,39,68,0.08);
+    --shadow-md: 0 4px 16px rgba(26,39,68,0.12);
+    --shadow-lg: 0 8px 32px rgba(26,39,68,0.15);
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--navy); min-height: 100vh; }
+
+  /* ── HEADER ── */
+  .app-header {
+    background: var(--navy);
+    color: white;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow-md);
+  }
+  .app-header .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--gold-light);
+    white-space: nowrap;
+  }
+  .app-header .subtitle {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.5);
+    font-weight: 400;
+    margin-left: 4px;
+  }
+  .header-spacer { flex: 1; }
+  .guest-count-badge {
+    background: rgba(200,149,42,0.2);
+    border: 1px solid var(--gold);
+    color: var(--gold-light);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  /* ── NAV TABS ── */
+  .nav-bar {
+    background: var(--navy-light);
+    display: flex;
+    overflow-x: auto;
+    padding: 0 24px;
+    gap: 2px;
+    scrollbar-width: none;
+  }
+  .nav-bar::-webkit-scrollbar { display: none; }
+  .nav-tab {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: rgba(255,255,255,0.55);
+    padding: 10px 16px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all 0.18s;
+    letter-spacing: 0.02em;
+    user-select: none;
+  }
+  .nav-tab:hover { color: rgba(255,255,255,0.85); }
+  .nav-tab.active { color: var(--gold-light); border-bottom-color: var(--gold); }
+
+  /* ── MAIN LAYOUT ── */
+  .main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+  .section-desc { font-size: 0.82rem; color: var(--slate-light); margin-bottom: 20px; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── FORM ELEMENTS ── */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .form-grid-2 { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full-width { grid-column: 1 / -1; }
+  label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--slate);
+  }
+  input[type="text"], input[type="date"], input[type="time"], input[type="email"],
+  input[type="tel"], select, textarea {
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-size: 0.86rem;
+    font-family: 'Inter', sans-serif;
+    color: var(--navy);
+    background: var(--white);
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(200,149,42,0.12); }
+  textarea { resize: vertical; min-height: 70px; }
+
+  /* ── PHOTO UPLOAD ── */
+  .photo-upload-area {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.18s;
+    position: relative;
+    background: var(--ivory);
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .photo-upload-area:hover { border-color: var(--gold); background: #faf7f0; }
+  .photo-upload-area img.preview {
+    max-height: 120px;
+    max-width: 100%;
+    border-radius: 8px;
+    object-fit: cover;
+  }
+  .photo-upload-area .upload-icon { font-size: 2rem; opacity: 0.4; }
+  .photo-upload-area .upload-label { font-size: 0.78rem; color: var(--slate-light); }
+  .photo-upload-area input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 18px; border-radius: var(--radius);
+    font-family: 'Inter', sans-serif; font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.15s; text-decoration: none;
+  }
+  .btn-primary { background: var(--navy); color: white; }
+  .btn-primary:hover { background: var(--navy-light); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+  .btn-gold { background: var(--gold); color: white; }
+  .btn-gold:hover { background: var(--gold-light); }
+  .btn-outline { background: white; color: var(--navy); border: 1.5px solid var(--border); }
+  .btn-outline:hover { border-color: var(--navy); }
+  .btn-danger { background: var(--red-bg); color: var(--red); border: 1.5px solid rgba(192,57,43,0.2); }
+  .btn-danger:hover { background: #f8d7d3; }
+  .btn-sm { padding: 6px 12px; font-size: 0.75rem; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+
+  /* ── GUEST LIST GRID ── */
+  .guest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .guest-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.18s;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+  }
+  .guest-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--gold); }
+  .guest-card-header { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+  .guest-avatar {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--navy), var(--navy-light));
+    color: white; font-weight: 700; font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; overflow: hidden;
+  }
+  .guest-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .guest-name { font-weight: 700; font-size: 0.92rem; color: var(--navy); line-height: 1.3; }
+  .guest-role { font-size: 0.72rem; color: var(--slate-light); margin-top: 2px; }
+  .guest-country { font-size: 0.72rem; color: var(--gold); font-weight: 600; margin-top: 2px; }
+  .guest-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .pill {
+    font-size: 0.68rem; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .pill-arrival { background: var(--green-bg); color: var(--green); }
+  .pill-departure { background: var(--blue-bg); color: var(--blue); }
+  .pill-hotel { background: var(--tag-bg); color: var(--slate); }
+  .pill-spouse { background: #fff3e0; color: #e65100; }
+  .guest-flight-info { font-size: 0.74rem; color: var(--slate-light); margin-top: 6px; line-height: 1.6; }
+  .guest-flight-info strong { color: var(--navy); font-weight: 600; }
+
+  /* ── TABLE ── */
+  .table-wrapper { overflow-x: auto; border-radius: var(--radius-lg); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  thead tr { background: var(--navy); color: white; }
+  th { padding: 10px 14px; text-align: left; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--ivory); }
+  .td-flight { font-weight: 700; color: var(--navy); }
+  .td-time { font-variant-numeric: tabular-nums; color: var(--slate); }
+  .td-name { font-weight: 600; }
+  .terminal-badge {
+    background: var(--navy); color: var(--gold-light);
+    font-size: 0.68rem; font-weight: 700;
+    padding: 2px 7px; border-radius: 4px;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── MEALS TABLE ── */
+  .meals-table th { background: var(--navy); }
+  .meal-check { text-align: center; font-size: 1rem; }
+  .check-yes { color: var(--green); }
+  .check-no { color: #ddd; }
+
+  /* ── ACTIVITY TABLE ── */
+  .activity-option-header { background: var(--gold); color: white; text-align: center; }
+
+  /* ── EVENTS TABLE ── */
+  .event-day-badge {
+    font-size: 0.65rem; font-weight: 700; padding: 2px 7px;
+    border-radius: 4px; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .day-d1 { background: #dbeafe; color: #1e40af; }
+  .day-d2 { background: #dcfce7; color: #166534; }
+  .day-d3 { background: #fef3c7; color: #92400e; }
+  .day-d4 { background: #fce7f3; color: #9d174d; }
+  .day-d5 { background: #ede9fe; color: #5b21b6; }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .search-box {
+    flex: 1; min-width: 200px; max-width: 340px;
+    position: relative;
+  }
+  .search-box input {
+    padding-left: 36px;
+    font-size: 0.84rem;
+  }
+  .search-icon {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    font-size: 0.9rem; opacity: 0.4;
+  }
+  .toolbar-right { display: flex; gap: 8px; margin-left: auto; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(26,39,68,0.5); z-index: 999;
+    align-items: flex-start; justify-content: center;
+    padding: 40px 16px; overflow-y: auto;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white; border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg); width: 100%; max-width: 820px;
+    position: relative; animation: slideUp 0.2s ease;
+  }
+  @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  .modal-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .modal-header .modal-avatar {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--navy), #3a4f8a);
+    color: white; font-size: 1.3rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; overflow: hidden;
+  }
+  .modal-header .modal-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; }
+  .modal-subtitle { font-size: 0.78rem; color: var(--slate-light); margin-top: 3px; }
+  .modal-close {
+    margin-left: auto; background: none; border: none;
+    font-size: 1.4rem; cursor: pointer; color: var(--slate-light);
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; transition: background 0.15s;
+  }
+  .modal-close:hover { background: var(--ivory); }
+  .modal-body { padding: 20px 24px; }
+  .modal-section { margin-bottom: 20px; }
+  .modal-section-title {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 10px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+  .info-item label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate-light); display: block; margin-bottom: 2px; }
+  .info-item span { font-size: 0.84rem; color: var(--navy); font-weight: 500; }
+  .info-item span.empty { color: var(--slate-light); font-style: italic; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--navy); color: white;
+    padding: 12px 20px; border-radius: var(--radius);
+    font-size: 0.82rem; font-weight: 500;
+    box-shadow: var(--shadow-lg); z-index: 9999;
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.25s ease;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { background: var(--green); }
+  .toast.error { background: var(--red); }
+
+  /* ── STATS ROW ── */
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: white; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+  .stat-value { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 700; color: var(--navy); line-height: 1; }
+  .stat-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--slate-light); margin-top: 4px; }
+  .stat-card.gold .stat-value { color: var(--gold); }
+
+  /* ── EDIT INLINE ── */
+  .edit-toggle { cursor: pointer; color: var(--gold); font-size: 0.75rem; font-weight: 600; margin-left: 8px; }
+  .edit-toggle:hover { text-decoration: underline; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .main { padding: 14px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .guest-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .modal { max-width: 100%; margin: 0; }
+    .modal-overlay { padding: 0; align-items: flex-end; }
+    .modal { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo">APS 2026 <span class="subtitle">/ Guest Management</span></div>
+  <div class="header-spacer"></div>
+  <div class="guest-count-badge" id="headerGuestCount">Loading…</div>
+</header>
+
+<nav class="nav-bar">
+  <div class="nav-tab active" data-view="guest-list">👥 Guest List</div>
+  <div class="nav-tab" data-view="add-guest">➕ Add / Edit Guest</div>
+  <div class="nav-tab" data-view="arrivals">✈️ Arrivals</div>
+  <div class="nav-tab" data-view="departures">🛫 Departures</div>
+  <div class="nav-tab" data-view="meals">🍽️ Meals</div>
+  <div class="nav-tab" data-view="activities">🎯 Activities</div>
+  <div class="nav-tab" data-view="events">📅 Events</div>
+  <div class="nav-tab" data-view="hotel">🏨 Hotel</div>
+  <div class="nav-tab" data-view="chaperones">🤝 Chaperones</div>
+  <div class="nav-tab" data-view="drivers">🚗 Drivers</div>
+</nav>
+
+<main class="main">
+
+  <!-- ──────────────── GUEST LIST ──────────────── -->
+  <div class="view active" id="view-guest-list">
+    <div class="stats-row" id="statsRow"></div>
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="guestSearch" placeholder="Search guests…" oninput="filterGuests()">
+      </div>
+      <select id="filterCountry" onchange="filterGuests()" style="max-width:160px;">
+        <option value="">All Countries</option>
+      </select>
+      <div class="toolbar-right">
+        <button class="btn btn-gold btn-sm" onclick="showView('add-guest')">+ Add Guest</button>
+      </div>
+    </div>
+    <div class="guest-grid" id="guestGrid"></div>
+  </div>
+
+  <!-- ──────────────── ADD / EDIT GUEST ──────────────── -->
+  <div class="view" id="view-add-guest">
+    <div class="section-title" id="formTitle">Add New Guest</div>
+    <div class="section-desc" id="formDesc">Fill in the guest profile details below. All fields can be updated later.</div>
+
+    <form id="guestForm" onsubmit="saveGuest(event)">
+      <input type="hidden" id="editGuestId">
+
+      <!-- PERSONAL INFO -->
+      <div class="card">
+        <div class="card-title">Personal Information</div>
+        <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;">
+          <div style="flex-shrink:0;">
+            <label style="display:block; margin-bottom:6px;">Guest Photo</label>
+            <div class="photo-upload-area" style="width:140px; height:140px;" id="photoUploadArea" onclick="document.getElementById('photoInput').click()">
+              <img id="photoPreview" src="" style="display:none; width:100%; height:100%; object-fit:cover; border-radius:8px;">
+              <div id="photoPlaceholder">
+                <div class="upload-icon">📷</div>
+                <div class="upload-label">Click to upload photo</div>
+              </div>
+              <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhotoUpload(event)">
+            </div>
+          </div>
+          <div style="flex:1; min-width:260px;">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Full Name *</label>
+                <input type="text" id="f_name" placeholder="e.g. Prof Doug Petersen" required>
+              </div>
+              <div class="form-group">
+                <label>Spouse / Partner</label>
+                <input type="text" id="f_spouse" placeholder="e.g. Sis Myrna" oninput="renderFormCheckboxes()">
+              </div>
+              <div class="form-group">
+                <label>Additional Guest(s)</label>
+                <input type="text" id="f_additional" placeholder="e.g. family members" oninput="renderFormCheckboxes()">
+              </div>
+              <div class="form-group">
+                <label>Country</label>
+                <input type="text" id="f_country" placeholder="e.g. USA">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="form-grid" style="margin-top:14px;">
+          <div class="form-group full-width">
+            <label>Title / Position</label>
+            <textarea id="f_title" placeholder="e.g. Professor Emeritus, School of Theology & Ministry, Vanguard University" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- ARRIVAL -->
+      <div class="card">
+        <div class="card-title">✈️ Arrival Details</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Arrival Flight No.</label>
+            <input type="text" id="f_arr_flight" placeholder="e.g. SQ 37">
+          </div>
+          <div class="form-group">
+            <label>Carrier / Airline</label>
+            <input type="text" id="f_arr_carrier" placeholder="e.g. Singapore Airlines">
+          </div>
+          <div class="form-group">
+            <label>Arriving From</label>
+            <input type="text" id="f_arr_from" placeholder="e.g. Los Angeles, CA">
+          </div>
+          <div class="form-group">
+            <label>Arrival Date</label>
+            <input type="date" id="f_arr_date">
+          </div>
+          <div class="form-group">
+            <label>Arrival Time</label>
+            <input type="time" id="f_arr_time">
+          </div>
+          <div class="form-group">
+            <label>Singapore Terminal</label>
+            <select id="f_arr_terminal">
+              <option value="">— Select Terminal —</option>
+              <option value="T1">T1</option>
+              <option value="T2">T2</option>
+              <option value="T3">T3</option>
+              <option value="T4">T4</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Arrival Remarks</label>
+            <input type="text" id="f_arr_remarks" placeholder="Any special notes">
+          </div>
+        </div>
+      </div>
+
+      <!-- DEPARTURE -->
+      <div class="card">
+        <div class="card-title">🛫 Departure Details</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Departure Flight No.</label>
+            <input type="text" id="f_dep_flight" placeholder="e.g. SQ 38">
+          </div>
+          <div class="form-group">
+            <label>Carrier / Airline</label>
+            <input type="text" id="f_dep_carrier" placeholder="e.g. Singapore Airlines">
+          </div>
+          <div class="form-group">
+            <label>Departing To</label>
+            <input type="text" id="f_dep_to" placeholder="e.g. Los Angeles, CA">
+          </div>
+          <div class="form-group">
+            <label>Departure Date</label>
+            <input type="date" id="f_dep_date">
+          </div>
+          <div class="form-group">
+            <label>Departure Time</label>
+            <input type="time" id="f_dep_time">
+          </div>
+          <div class="form-group">
+            <label>Singapore Terminal</label>
+            <select id="f_dep_terminal">
+              <option value="">— Select Terminal —</option>
+              <option value="T1">T1</option>
+              <option value="T2">T2</option>
+              <option value="T3">T3</option>
+              <option value="T4">T4</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Departure Remarks</label>
+            <input type="text" id="f_dep_remarks" placeholder="Any special notes">
+          </div>
+        </div>
+      </div>
+
+      <!-- ACCOMMODATION -->
+      <div class="card">
+        <div class="card-title">🏨 Accommodation</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Hotel / Accommodation</label>
+            <input type="text" id="f_hotel" placeholder="e.g. PPH / HYATT">
+          </div>
+          <div class="form-group">
+            <label>Room Number</label>
+            <input type="text" id="f_room" placeholder="e.g. 301">
+          </div>
+          <div class="form-group">
+            <label>Check-in Date</label>
+            <input type="date" id="f_checkin">
+          </div>
+          <div class="form-group">
+            <label>Check-out Date</label>
+            <input type="date" id="f_checkout">
+          </div>
+        </div>
+      </div>
+
+      <!-- SESSIONS -->
+      <div class="card">
+        <div class="card-title">🤝 Chaperone & Driver Assignment</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; flex-wrap:wrap;">
+          <!-- Arrival -->
+          <div>
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--green);margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--border);">✈️ Arrival</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Chaperone</label>
+                <select id="f_arr_chaperone_id" onchange="syncChaperoneName('arr')">
+                  <option value="">— Select Chaperone —</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Driver</label>
+                <select id="f_arr_driver_id" onchange="syncDriverFields('arr')">
+                  <option value="">— Select Driver —</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Car Plate</label>
+                <input type="text" id="f_arr_plate" placeholder="Auto-filled or override">
+              </div>
+              <div class="form-group">
+                <label>Car Brand / Model</label>
+                <input type="text" id="f_arr_car" placeholder="Auto-filled or override">
+              </div>
+              <div class="form-group">
+                <label>Car Colour</label>
+                <input type="text" id="f_arr_color" placeholder="Auto-filled or override">
+              </div>
+            </div>
+          </div>
+          <!-- Departure -->
+          <div>
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--blue);margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--border);">🛫 Departure</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Chaperone</label>
+                <select id="f_dep_chaperone_id" onchange="syncChaperoneName('dep')">
+                  <option value="">— Select Chaperone —</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Driver</label>
+                <select id="f_dep_driver_id" onchange="syncDriverFields('dep')">
+                  <option value="">— Select Driver —</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Car Plate</label>
+                <input type="text" id="f_dep_plate" placeholder="Auto-filled or override">
+              </div>
+              <div class="form-group">
+                <label>Car Brand / Model</label>
+                <input type="text" id="f_dep_car" placeholder="Auto-filled or override">
+              </div>
+              <div class="form-group">
+                <label>Car Colour</label>
+                <input type="text" id="f_dep_color" placeholder="Auto-filled or override">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SESSIONS -->
+      <div class="card">
+        <div class="card-title">🎤 Sessions / Programme</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label>Session (1st)</label>
+            <input type="text" id="f_session1" placeholder="e.g. Session 1 - D1">
+          </div>
+          <div class="form-group">
+            <label>Respondent (1st)</label>
+            <input type="text" id="f_respond1" placeholder="Respondent name">
+          </div>
+          <div class="form-group">
+            <label>Session (2nd)</label>
+            <input type="text" id="f_session2" placeholder="e.g. Session 4 - D1">
+          </div>
+          <div class="form-group">
+            <label>Respondent (2nd)</label>
+            <input type="text" id="f_respond2" placeholder="Respondent name">
+          </div>
+        </div>
+      </div>
+
+      <!-- MEALS & PREFERENCES -->
+      <div class="card">
+        <div class="card-title">🍽️ Dietary & Preferences</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group full-width">
+            <label>Food Allergen / Dislike</label>
+            <textarea id="f_allergen" placeholder="e.g. No Tofu, Small seeds; no kiwi…" rows="2"></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label>Food Preference</label>
+            <textarea id="f_foodpref" placeholder="e.g. White meat, fish or chicken; Green Veg…" rows="2"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Preferred Hot Beverage</label>
+            <input type="text" id="f_bevhot" placeholder="e.g. Coffee, Tea">
+          </div>
+          <div class="form-group">
+            <label>Preferred Cold Beverage</label>
+            <input type="text" id="f_bevcold" placeholder="e.g. Sparkling water, Fresh juice">
+          </div>
+        </div>
+        <!-- Meal attendance -->
+        <div style="margin-top:18px; border-top:1px solid var(--border); padding-top:14px;">
+          <label style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--slate); display:block; margin-bottom:12px;">Meal Attendance</label>
+          <div style="display:flex; flex-direction:column; gap:14px;" id="mealCheckboxesWrap">
+            <div>
+              <div style="font-size:0.72rem; font-weight:700; color:var(--navy); margin-bottom:7px; letter-spacing:0.04em;">🧑 Main Guest</div>
+              <div id="mealCheckboxes" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+            </div>
+            <div id="mealCheckboxes_spouse_wrap" style="display:none;">
+              <div style="font-size:0.72rem; font-weight:700; color:var(--gold); margin-bottom:7px; letter-spacing:0.04em;">💑 Spouse / Partner — <span id="meal_spouse_label" style="font-weight:400;font-style:italic;"></span></div>
+              <div id="mealCheckboxes_spouse" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+            </div>
+            <div id="mealCheckboxes_additional_wrap" style="display:none;">
+              <div style="font-size:0.72rem; font-weight:700; color:var(--blue); margin-bottom:7px; letter-spacing:0.04em;">👥 Additional Guest(s) — <span id="meal_additional_label" style="font-weight:400;font-style:italic;"></span></div>
+              <div id="mealCheckboxes_additional" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTIVITIES -->
+      <div class="card">
+        <div class="card-title">🎯 Activity Preferences</div>
+        <div style="display:flex; flex-direction:column; gap:14px;" id="activityCheckboxesWrap">
+          <div>
+            <div style="font-size:0.72rem; font-weight:700; color:var(--navy); margin-bottom:7px; letter-spacing:0.04em;">🧑 Main Guest</div>
+            <div id="activityCheckboxes" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+          </div>
+          <div id="activityCheckboxes_spouse_wrap" style="display:none;">
+            <div style="font-size:0.72rem; font-weight:700; color:var(--gold); margin-bottom:7px; letter-spacing:0.04em;">💑 Spouse / Partner — <span id="act_spouse_label" style="font-weight:400;font-style:italic;"></span></div>
+            <div id="activityCheckboxes_spouse" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+          </div>
+          <div id="activityCheckboxes_additional_wrap" style="display:none;">
+            <div style="font-size:0.72rem; font-weight:700; color:var(--blue); margin-bottom:7px; letter-spacing:0.04em;">👥 Additional Guest(s) — <span id="act_additional_label" style="font-weight:400;font-style:italic;"></span></div>
+            <div id="activityCheckboxes_additional" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADDITIONAL -->
+      <div class="card">
+        <div class="card-title">📝 Additional Remarks</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group full-width">
+            <label>Remarks (1)</label>
+            <textarea id="f_remark1" rows="2" placeholder="e.g. Laundry needs?"></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label>Remarks (2)</label>
+            <textarea id="f_remark2" rows="2" placeholder="e.g. Staying in SG till 17 Oct"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button type="submit" class="btn btn-primary">💾 Save Guest</button>
+        <button type="button" class="btn btn-outline" onclick="clearForm()">✕ Clear Form</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ──────────────── ARRIVALS ──────────────── -->
+  <div class="view" id="view-arrivals">
+    <div class="section-title">Arrival Schedule</div>
+    <div class="section-desc">All guests arriving in Singapore — sorted by date and time.</div>
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="arrSearch" placeholder="Search arrivals…" oninput="renderArrivals()">
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table id="arrivalsTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>Day</th>
+            <th>Time</th>
+            <th>Flight</th>
+            <th>Carrier</th>
+            <th>From</th>
+            <th>Terminal</th>
+            <th>Guest</th>
+            <th>Spouse</th>
+            <th>Chaperone</th>
+            <th>Driver</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody id="arrivalsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ──────────────── DEPARTURES ──────────────── -->
+  <div class="view" id="view-departures">
+    <div class="section-title">Departure Schedule</div>
+    <div class="section-desc">All guests departing Singapore — sorted by date and time.</div>
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="depSearch" placeholder="Search departures…" oninput="renderDepartures()">
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table id="departuresTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>Day</th>
+            <th>Time</th>
+            <th>Flight</th>
+            <th>Carrier</th>
+            <th>To</th>
+            <th>Terminal</th>
+            <th>Guest</th>
+            <th>Spouse</th>
+            <th>Chaperone</th>
+            <th>Driver</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody id="departuresBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ──────────────── MEALS ──────────────── -->
+  <div class="view" id="view-meals">
+    <div class="section-title">Meal Planning</div>
+    <div class="section-desc">Guest attendance per meal, dietary requirements, and beverage preferences.</div>
+
+    <!-- Meal Events Editor -->
+    <div class="card" style="margin-bottom:18px;">
+      <div class="card-title" style="display:flex; align-items:center; justify-content:space-between;">
+        <span>Meal Events</span>
+        <button class="btn btn-gold btn-sm" onclick="addMealEvent()">+ Add Meal</button>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>#</th><th>Name</th><th>Date</th><th>Day</th><th>Time</th><th>Location / Venue</th><th></th></tr></thead>
+          <tbody id="mealEventsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Dietary Table -->
+    <div class="card">
+      <div class="card-title">Dietary Requirements & Beverage Preferences</div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>#</th><th>Name</th><th>Role</th><th>Allergen / Dislike</th><th>Food Preference</th><th>Hot Beverage</th><th>Cold Beverage</th></tr></thead>
+          <tbody id="dietaryBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Attendance Matrix -->
+    <div class="card" style="margin-top:16px;">
+      <div class="card-title">Meal Attendance Matrix</div>
+      <div class="table-wrapper">
+        <table class="meals-table" id="mealsMatrix">
+          <thead><tr id="mealsMatrixHeader"></tr></thead>
+          <tbody id="mealsMatrixBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────── ACTIVITIES ──────────────── -->
+  <div class="view" id="view-activities">
+    <div class="section-title">Activity Options</div>
+    <div class="section-desc">Manage activity options and guest sign-ups.</div>
+
+    <!-- Activity Options Editor -->
+    <div class="card" style="margin-bottom:18px;">
+      <div class="card-title" style="display:flex; align-items:center; justify-content:space-between;">
+        <span>Activity Options</span>
+        <button class="btn btn-gold btn-sm" onclick="addActivityOption()">+ Add Option</button>
+      </div>
+      <div id="activityOptionsEditor" style="display:flex; flex-wrap:wrap; gap:12px; padding-top:4px;"></div>
+    </div>
+
+    <!-- Activity Sign-up Matrix -->
+    <div class="card">
+      <div class="card-title">Sign-up Matrix</div>
+      <div class="table-wrapper">
+        <table id="activityMatrix">
+          <thead><tr id="activityMatrixHeader"></tr></thead>
+          <tbody id="activityMatrixBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────── EVENTS ──────────────── -->
+  <div class="view" id="view-events">
+    <div class="section-title">Events Programme</div>
+    <div class="section-desc">Full schedule of sessions, meals, and activities.</div>
+    <div style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+      <button class="btn btn-gold btn-sm" onclick="addEventRow()">+ Add Event</button>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Date</th><th>Day</th><th>Start Time</th><th>Day Ref</th><th>Type</th><th>Description / Subject</th><th>Presenter</th><th>Respondent</th><th>Location</th><th>Chaperone</th><th></th></tr></thead>
+        <tbody id="eventsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ──────────────── HOTEL ──────────────── -->
+  <div class="view" id="view-hotel">
+    <div class="section-title">Hotel & Accommodation</div>
+    <div class="section-desc">Check-in and check-out schedule for all guests.</div>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>#</th><th>Guest</th><th>Spouse</th><th>Hotel</th><th>Room</th><th>Arrival</th><th>Check-in</th><th>Departure</th><th>Check-out</th><th>Nights</th></tr></thead>
+        <tbody id="hotelBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ──────────────── CHAPERONES ──────────────── -->
+  <div class="view" id="view-chaperones">
+    <div class="section-title">Chaperone Register</div>
+    <div class="section-desc">All chaperones and their guest assignments. Changes here sync across the entire app.</div>
+    <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center;">
+      <button class="btn btn-gold btn-sm" onclick="addChaperone()">+ Add Chaperone</button>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Contact No.</th><th>Remark</th><th>Assigned Guests</th><th>Status</th><th></th></tr></thead>
+        <tbody id="chaperoneBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ──────────────── DRIVERS ──────────────── -->
+  <div class="view" id="view-drivers">
+    <div class="section-title">Driver Register</div>
+    <div class="section-desc">All drivers, vehicles, and guest assignments. Changes here sync across the entire app.</div>
+    <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center;">
+      <button class="btn btn-gold btn-sm" onclick="addDriver()">+ Add Driver</button>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Contact</th><th>Car Plate</th><th>Brand / Model</th><th>Colour</th><th>Remark</th><th>Assigned Guests</th><th>Status</th><th></th></tr></thead>
+        <tbody id="driverBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- ──────────────── GUEST DETAIL MODAL ──────────────── -->
+<div class="modal-overlay" id="guestModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-avatar" id="modalAvatar"></div>
+      <div>
+        <div class="modal-title" id="modalName"></div>
+        <div class="modal-subtitle" id="modalSubtitle"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('guestModal')">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- ──────────────── MEAL EVENT MODAL ──────────────── -->
+<div class="modal-overlay" id="mealModal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <div><div class="modal-title" id="mealModalTitle">Add Meal Event</div></div>
+      <button class="modal-close" onclick="closeModal('mealModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full-width">
+          <label>Meal Name *</label>
+          <input type="text" id="mf_name" placeholder="e.g. Welcome Dinner">
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="mf_date">
+        </div>
+        <div class="form-group">
+          <label>Day</label>
+          <input type="text" id="mf_day" placeholder="e.g. Tue">
+        </div>
+        <div class="form-group">
+          <label>Time</label>
+          <input type="time" id="mf_time">
+        </div>
+        <div class="form-group full-width">
+          <label>Location / Venue</label>
+          <input type="text" id="mf_venue" placeholder="e.g. Summit Suite, Level 5">
+        </div>
+      </div>
+      <input type="hidden" id="mf_editIdx">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveMealEvent()">Save Meal</button>
+        <button class="btn btn-outline" onclick="closeModal('mealModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────── ACTIVITY OPTION MODAL ──────────────── -->
+<div class="modal-overlay" id="activityModal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <div><div class="modal-title" id="actModalTitle">Add Activity Option</div></div>
+      <button class="modal-close" onclick="closeModal('activityModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full-width">
+          <label>Activity Name *</label>
+          <input type="text" id="af_name" placeholder="e.g. Gardens by the Bay">
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="af_date">
+        </div>
+        <div class="form-group">
+          <label>Time</label>
+          <input type="time" id="af_time">
+        </div>
+        <div class="form-group full-width">
+          <label>Location</label>
+          <input type="text" id="af_location" placeholder="e.g. 18 Marina Gardens Dr, Singapore">
+        </div>
+        <div class="form-group full-width">
+          <label>Description</label>
+          <textarea id="af_desc" rows="2" placeholder="Brief description of the activity"></textarea>
+        </div>
+      </div>
+      <input type="hidden" id="af_editIdx">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveActivityOption()">Save Activity</button>
+        <button class="btn btn-outline" onclick="closeModal('activityModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────── EVENT ROW MODAL ──────────────── -->
+<div class="modal-overlay" id="eventModal">
+  <div class="modal" style="max-width:620px;">
+    <div class="modal-header">
+      <div><div class="modal-title" id="evModalTitle">Add Event</div></div>
+      <button class="modal-close" onclick="closeModal('eventModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid form-grid-2">
+        <div class="form-group"><label>Date</label><input type="date" id="ef_date"></div>
+        <div class="form-group"><label>Day</label><input type="text" id="ef_day" placeholder="e.g. Wed"></div>
+        <div class="form-group"><label>Start Time</label><input type="time" id="ef_start"></div>
+        <div class="form-group"><label>Day Reference</label><input type="text" id="ef_dayref" placeholder="e.g. D1, D2"></div>
+        <div class="form-group"><label>Type</label>
+          <select id="ef_type">
+            <option value="Session">Session</option>
+            <option value="Devotion">Devotion</option>
+            <option value="Meal">Meal</option>
+            <option value="Activity">Activity</option>
+            <option value="Break">Break</option>
+            <option value="Service">Service</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Presenter / Speaker</label><input type="text" id="ef_presenter" placeholder="e.g. Frank Macchia"></div>
+        <div class="form-group"><label>Respondent</label><input type="text" id="ef_respondent" placeholder="e.g. Byron Klaus"></div>
+        <div class="form-group full-width"><label>Description / Subject</label><textarea id="ef_desc" rows="2" placeholder="Full session title or event description"></textarea></div>
+        <div class="form-group full-width"><label>Location / Venue</label><input type="text" id="ef_location" placeholder="e.g. Summit Suite, Hilton Orchard"></div>
+        <div class="form-group"><label>Chaperone</label><input type="text" id="ef_chaperone" placeholder="Chaperone name"></div>
+      </div>
+      <input type="hidden" id="ef_editIdx">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveEventRow()">Save Event</button>
+        <button class="btn btn-outline" onclick="closeModal('eventModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────── CHAPERONE MODAL ──────────────── -->
+<div class="modal-overlay" id="chaperoneModal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <div><div class="modal-title" id="chapModalTitle">Add Chaperone</div></div>
+      <button class="modal-close" onclick="closeModal('chaperoneModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid form-grid-2">
+        <div class="form-group full-width">
+          <label>Full Name *</label>
+          <input type="text" id="ch_name" placeholder="e.g. Ps Yong">
+        </div>
+        <div class="form-group">
+          <label>Contact Number</label>
+          <input type="text" id="ch_contact" placeholder="e.g. 9123 4567">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="ch_status">
+            <option value="Available">Available</option>
+            <option value="Assigned">Assigned</option>
+            <option value="Unavailable">Unavailable</option>
+          </select>
+        </div>
+        <div class="form-group full-width">
+          <label>Remark</label>
+          <textarea id="ch_remark" rows="2" placeholder="Any notes about availability or assignment"></textarea>
+        </div>
+      </div>
+      <input type="hidden" id="ch_editId">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveChaperone()">Save Chaperone</button>
+        <button class="btn btn-outline" onclick="closeModal('chaperoneModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────── DRIVER MODAL ──────────────── -->
+<div class="modal-overlay" id="driverModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <div><div class="modal-title" id="drvModalTitle">Add Driver</div></div>
+      <button class="modal-close" onclick="closeModal('driverModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid form-grid-2">
+        <div class="form-group full-width">
+          <label>Full Name *</label>
+          <input type="text" id="dr_name" placeholder="e.g. Samuel Wong">
+        </div>
+        <div class="form-group">
+          <label>Contact Number</label>
+          <input type="text" id="dr_contact" placeholder="e.g. 9479 1551">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="dr_status">
+            <option value="Free">Free</option>
+            <option value="Assigned">Assigned</option>
+            <option value="Unavailable">Unavailable</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Car Plate</label>
+          <input type="text" id="dr_plate" placeholder="e.g. SMY 4152 H">
+        </div>
+        <div class="form-group">
+          <label>Car Brand / Model</label>
+          <input type="text" id="dr_car" placeholder="e.g. MB / CLA">
+        </div>
+        <div class="form-group">
+          <label>Car Colour</label>
+          <input type="text" id="dr_color" placeholder="e.g. RED">
+        </div>
+        <div class="form-group full-width">
+          <label>Remark</label>
+          <textarea id="dr_remark" rows="2" placeholder="Any notes"></textarea>
+        </div>
+      </div>
+      <input type="hidden" id="dr_editId">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveDriver()">Save Driver</button>
+        <button class="btn btn-outline" onclick="closeModal('driverModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  DATA STORE
+// ═══════════════════════════════════════════
+let db = {
+  guests: [],
+  mealEvents: [],
+  activityOptions: [],
+  events: [],
+  chaperones: [],
+  drivers: []
+};
+
+const DB_VERSION = 3;
+
+// ── Firebase persistence ──────────────────────────────────────────────────────
+// Firestore document: aps2026/maindb  (single document stores everything)
+let _firestoreDb = null;
+let _saveTimer   = null;
+
+function _setFirestore(fsDb) { _firestoreDb = fsDb; }
+
+function migrateDB() {
+  const mLen = (db.mealEvents||[]).length;
+  const aLen = (db.activityOptions||[]).length;
+  if (!db.chaperones) db.chaperones = [];
+  if (!db.drivers)    db.drivers    = [];
+  (db.guests||[]).forEach(g => {
+    if (!g.mealSpouseAttendance)          g.mealSpouseAttendance          = Array(mLen).fill(false);
+    if (!g.mealAdditionalAttendance)      g.mealAdditionalAttendance      = Array(mLen).fill(false);
+    if (!g.activitySpouseAttendance)      g.activitySpouseAttendance      = Array(aLen).fill(false);
+    if (!g.activityAdditionalAttendance)  g.activityAdditionalAttendance  = Array(aLen).fill(false);
+    if (!g.additional)       g.additional       = '';
+    if (!g.arr_chaperone_id) g.arr_chaperone_id = '';
+    if (!g.arr_driver_id)    g.arr_driver_id    = '';
+    if (!g.dep_chaperone_id) g.dep_chaperone_id = '';
+    if (!g.dep_driver_id)    g.dep_driver_id    = '';
+  });
+  (db.events||[]).forEach(ev => { if (!ev.respondent) ev.respondent = ''; });
+}
+
+function loadDB() {
+  // Called after Firebase initialises — see bottom of script
+  showSyncIndicator('loading');
+}
+
+async function _loadFromFirestore() {
+  try {
+    const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDoc(doc(_firestoreDb, 'aps2026', 'maindb'));
+    if (snap.exists()) {
+      db = snap.data();
+      migrateDB();
+    } else {
+      seedData();
+      await _doSave();
+    }
+  } catch(e) {
+    console.warn('Firestore load failed, using localStorage fallback:', e);
+    _loadLocalFallback();
+  }
+  showSyncIndicator('');
+  renderGuestList();
+}
+
+function _loadLocalFallback() {
+  try {
+    const s = localStorage.getItem('aps2026_db');
+    if (s) db = JSON.parse(s); else seedData();
+    migrateDB();
+  } catch(e) { seedData(); }
+}
+
+function saveDB() {
+  // Mirror to localStorage immediately as offline fallback
+  try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
+  // Debounce Firestore write by 600ms
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(_doSave, 600);
+}
+
+async function _doSave() {
+  if (!_firestoreDb) return;
+  try {
+    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await setDoc(doc(_firestoreDb, 'aps2026', 'maindb'), db);
+    showSyncIndicator('saved');
+  } catch(e) {
+    console.error('Firestore save failed:', e);
+    showSyncIndicator('error');
+  }
+}
+
+let _syncBadgeTimer = null;
+function showSyncIndicator(state) {
+  let el = document.getElementById('_syncBadge');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '_syncBadge';
+    el.style.cssText = 'position:fixed;bottom:20px;left:20px;font-size:0.72rem;font-weight:600;padding:5px 14px;border-radius:20px;z-index:9997;transition:opacity 0.4s;font-family:Inter,sans-serif;pointer-events:none;';
+    document.body.appendChild(el);
+  }
+  clearTimeout(_syncBadgeTimer);
+  if (state === 'saved') {
+    el.textContent = '✓ Saved to Google Cloud';
+    el.style.cssText += 'background:#e8f5ee;color:#2d7a4f;opacity:1;';
+    _syncBadgeTimer = setTimeout(() => { el.style.opacity='0'; }, 2500);
+  } else if (state === 'error') {
+    el.textContent = '⚠ Cloud save failed — local copy kept';
+    el.style.cssText += 'background:#fdecea;color:#c0392b;opacity:1;';
+  } else if (state === 'loading') {
+    el.textContent = '⏳ Loading from Google Cloud…';
+    el.style.cssText += 'background:#eef2ff;color:#3b5bdb;opacity:1;';
+  } else {
+    el.style.opacity = '0';
+  }
+}
+
+
+// ═══════════════════════════════════════════
+//  SEED DATA (from Excel)
+// ═══════════════════════════════════════════
+function seedData() {
+  db.mealEvents = [
+    { name: "Dinner w/ PK", date: "2026-07-19", day: "Sun", time: "18:00", venue: "Chatterbox — Hilton Orchard Singapore, 333 Orchard Rd, #05-03" },
+    { name: "Welcome Dinner", date: "2026-07-21", day: "Tue", time: "19:00", venue: "Summit Suite" },
+    { name: "Dinner", date: "2026-07-23", day: "Thu", time: "18:00", venue: "HTL" },
+    { name: "Dinner", date: "2026-07-25", day: "Sat", time: "19:15", venue: "Asia Grand" },
+    { name: "Farewell Dinner", date: "2026-07-26", day: "Sun", time: "19:00", venue: "Summit Suite" }
+  ];
+
+  db.activityOptions = [
+    { name: "Botanical Garden", date: "2026-07-25", time: "09:00", location: "Singapore Botanic Gardens, 1 Cluny Rd", desc: "Option 1 — guided tour of the National Orchid Garden and grounds" },
+    { name: "Gardens by the Bay", date: "2026-07-25", time: "09:00", location: "18 Marina Gardens Dr, Singapore 018953", desc: "Option 2 — Flower Dome and Cloud Forest" }
+  ];
+
+  db.events = [
+    { date:"2026-07-19", day:"Sun", start:"18:00", dayref:"", type:"Meal", desc:"Dinner w/ PK", presenter:"PK, PBC and Cindy", respondent:"", location:"Chatterbox — Hilton Orchard Singapore", chaperone:"" },
+    { date:"2026-07-21", day:"Tue", start:"19:00", dayref:"", type:"Meal", desc:"Welcome Dinner", presenter:"", respondent:"", location:"Summit Suite", chaperone:"" },
+    { date:"2026-07-22", day:"Wed", start:"08:45", dayref:"D1", type:"Session", desc:"Opening Address", presenter:"Stephen Fogarty / BK / DP", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-22", day:"Wed", start:"09:25", dayref:"D1", type:"Session", desc:"Session 1 — Justified in the Spirit: A Pentecostal Reflection", presenter:"Frank Macchia", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-22", day:"Wed", start:"10:40", dayref:"D1", type:"Break", desc:"Break", presenter:"", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-22", day:"Wed", start:"11:00", dayref:"D1", type:"Session", desc:"Session 2 — Living From the Inside Out: The Necessity of Holistic Spiritual Formation For Mission in a Driven Culture", presenter:"Bill Dogterom", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-22", day:"Wed", start:"12:20", dayref:"D1", type:"Break", desc:"Lunch Break", presenter:"", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-22", day:"Wed", start:"13:30", dayref:"D1", type:"Session", desc:"Session 3 — \"Come out of her, my people\": Ethics of vs. Ethics in Babylon", presenter:"Melissa Archer", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-22", day:"Wed", start:"14:50", dayref:"D1", type:"Break", desc:"Break", presenter:"", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-22", day:"Wed", start:"19:30", dayref:"D1", type:"Session", desc:"Session 4 — The New Apostolic Reformation: Understanding Its Origins and Critiquing Its Influence on Global Pentecostalism", presenter:"Byron Klaus", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-23", day:"Thu", start:"08:45", dayref:"D2", type:"Devotion", desc:"Devotion", presenter:"Paul Bendor", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-23", day:"Thu", start:"09:25", dayref:"D2", type:"Session", desc:"Session 5 — The Anointing of the Prophet: An Aesthetic Reading of Prophetic Behavior", presenter:"Wolfgang Vondey", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-23", day:"Thu", start:"10:40", dayref:"D2", type:"Break", desc:"Break", presenter:"", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-23", day:"Thu", start:"11:00", dayref:"D2", type:"Session", desc:"Session 6 — Harmful Spirits: From Fear to Freedom", presenter:"Candy Gunther Brown", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-23", day:"Thu", start:"12:20", dayref:"D2", type:"Break", desc:"Lunch Break", presenter:"", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-23", day:"Thu", start:"13:30", dayref:"D2", type:"Session", desc:"Session 7 — Blessed Assurance, Jesus is mine: Grace in a Wesleyan-Pentecostal Perspective", presenter:"Kenneth Archer", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-23", day:"Thu", start:"14:50", dayref:"D2", type:"Break", desc:"Break", presenter:"", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-23", day:"Thu", start:"15:10", dayref:"D2", type:"Session", desc:"Session 8 — Theological Sources for a Pentecostal Christian Humanist Movement", presenter:"Bill Oliverio", respondent:"Joel Tejedo", location:"", chaperone:"" },
+    { date:"2026-07-23", day:"Thu", start:"16:30", dayref:"D2", type:"Other", desc:"END", presenter:"", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-23", day:"Thu", start:"18:00", dayref:"D2", type:"Meal", desc:"Dinner", presenter:"", respondent:"", location:"HTL", chaperone:"" },
+    { date:"2026-07-24", day:"Fri", start:"08:45", dayref:"D3", type:"Devotion", desc:"Devotion", presenter:"David Perry", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-24", day:"Fri", start:"09:25", dayref:"D3", type:"Session", desc:"Session 9 — The Great/Higher Learning of and in the Spirit: A West-(South)East Asian Conversation after Pentecost", presenter:"Amos Yong", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-24", day:"Fri", start:"11:00", dayref:"D3", type:"Session", desc:"Session 10 — Jesus, Not Just His Blessings: A Pentecostal Theology of Encounter With Christ at His Table", presenter:"Jonathan Black", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-24", day:"Fri", start:"13:30", dayref:"D3", type:"Session", desc:"Session 11 — Silence and Solitude in Pentecostal Spirituality: Exploring the Inner Life in Contemporary Context", presenter:"Roger Heuser", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-24", day:"Fri", start:"15:10", dayref:"D3", type:"Session", desc:"Session 12 — Liminal Prophets: Toward a Theology of Youth After Pentecost", presenter:"Joy Qualls / Wayne Choong", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-24", day:"Fri", start:"19:00", dayref:"D3", type:"Activity", desc:"Cell Group", presenter:"", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-25", day:"Sat", start:"09:00", dayref:"D4", type:"Activity", desc:"Activity (Options: Botanical Garden / Gardens by the Bay)", presenter:"", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-25", day:"Sat", start:"17:00", dayref:"D4", type:"Session", desc:"Session 13 — The Failure of the Prophet: A Theological Critique of the Prophethood of All Believers", presenter:"Wolfgang Vondey", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-25", day:"Sat", start:"19:15", dayref:"D4", type:"Meal", desc:"Dinner", presenter:"", respondent:"", location:"Asia Grand", chaperone:"" },
+    { date:"2026-07-26", day:"Sun", start:"10:00", dayref:"D5", type:"Service", desc:"Sunday Service — Healing Service", presenter:"", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-26", day:"Sun", start:"12:30", dayref:"D5", type:"Meal", desc:"Lunch", presenter:"", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-26", day:"Sun", start:"14:00", dayref:"D5", type:"Other", desc:"Final Reflection", presenter:"", respondent:"", location:"", chaperone:"" },
+    { date:"2026-07-26", day:"Sun", start:"19:00", dayref:"D5", type:"Meal", desc:"Farewell Dinner", presenter:"", respondent:"", location:"Summit Suite", chaperone:"" }
+  ];
+
+  // ── Chaperones (from Excel Chaperone sheet) ──
+  const chapSeed = [
+    { name:"Ps Yong / Lincoln", contact:"", remark:"", status:"Assigned" },
+    { name:"Isaiah / Klessis",  contact:"", remark:"", status:"Assigned" },
+    { name:"Ian Chong",         contact:"", remark:"", status:"Assigned" },
+    { name:"Ps Eileen & Ps Johann", contact:"", remark:"", status:"Assigned" },
+    { name:"BK and Pauline",    contact:"", remark:"", status:"Assigned" },
+    { name:"Cate & Vincent",    contact:"", remark:"", status:"Available" },
+    { name:"Ps Edmund / Jia Hui", contact:"", remark:"", status:"Assigned" },
+    { name:"Sandra Tan & Nicodemus", contact:"", remark:"", status:"Assigned" },
+    { name:"Guorong",           contact:"", remark:"", status:"Available" },
+    { name:"Hansen Sy / Judy Sy", contact:"", remark:"", status:"Available" },
+    { name:"Fu Ming and Matthias", contact:"", remark:"", status:"Assigned" },
+    { name:"Kelvin / Cynthia",  contact:"", remark:"", status:"Assigned" },
+    { name:"Eng Wee",           contact:"", remark:"", status:"Assigned" },
+    { name:"Jeremy Choy",       contact:"", remark:"", status:"Available" },
+    { name:"Ps JX and Dawn",    contact:"", remark:"", status:"Available" },
+    { name:"Weiren",            contact:"", remark:"", status:"Available" },
+    { name:"Vincent",           contact:"", remark:"", status:"Available" },
+    { name:"Ps JX",             contact:"", remark:"", status:"Assigned" },
+    { name:"Jason Jiang",       contact:"", remark:"", status:"Available" },
+    { name:"Joel Kuek",         contact:"", remark:"", status:"Available" },
+    { name:"Joseph Ganapathy",  contact:"", remark:"25 and 26 Jul Available", status:"Available" },
+    { name:"Tat Haur / Naomi",  contact:"", remark:"", status:"Assigned" }
+  ];
+  db.chaperones = chapSeed.map((c,i) => ({ id: 100+i, ...c }));
+
+  // ── Drivers (from Excel Driver sheet) ──
+  const drvSeed = [
+    { name:"Samuel Wong",   contact:"9479 1551", plate:"",          car:"MB / CLA",             color:"RED",       remark:"", status:"Assigned" },
+    { name:"Adrian Tan",    contact:"9451 0826", plate:"SMY 4152 H",car:"Land Rover - Discovery",color:"RED",       remark:"", status:"Assigned" },
+    { name:"Berwin Tay",    contact:"9825 8061", plate:"SNT 691 J", car:"Nissan - Serena",       color:"GREEN",     remark:"", status:"Assigned" },
+    { name:"Bernard Lim",   contact:"9455 6746", plate:"SLB 5433 Z",car:"",                      color:"",          remark:"", status:"Assigned" },
+    { name:"Boon Kiat",     contact:"",          plate:"",          car:"",                      color:"",          remark:"", status:"Assigned" },
+    { name:"Ethan Leong",   contact:"8568 8898", plate:"",          car:"",                      color:"",          remark:"", status:"Assigned" },
+    { name:"Joel Quek",     contact:"8339 5024", plate:"SKM 3377 U",car:"Tesla 3",               color:"WHITE",     remark:"", status:"Assigned" },
+    { name:"Sandra",        contact:"",          plate:"",          car:"BYD",                   color:"",          remark:"", status:"Assigned" },
+    { name:"Martin Ong",    contact:"9686 0332", plate:"",          car:"MB - S Class",          color:"",          remark:"", status:"Free" },
+    { name:"Lester Chee",   contact:"9622 8891", plate:"",          car:"MB - R Class",          color:"",          remark:"", status:"Free" },
+    { name:"Fu Ming",       contact:"",          plate:"SGX 3041 C",car:"",                      color:"",          remark:"", status:"Assigned" },
+    { name:"Steven Chng",   contact:"9229 0187", plate:"SMZ 4816 X",car:"Audi - A2",             color:"BLUE",      remark:"", status:"Assigned" },
+    { name:"Ps JX",         contact:"",          plate:"",          car:"Volvo - S60",           color:"",          remark:"", status:"Free" },
+    { name:"Lucy Sim",      contact:"9837 8077", plate:"",          car:"",                      color:"",          remark:"", status:"Free" },
+    { name:"Jason Jiang",   contact:"9728 0483", plate:"SNW 4584 T",car:"MB - CLA",              color:"SILVER",    remark:"", status:"Free" },
+    { name:"Lincoln Lim",   contact:"9237 4020", plate:"SKZ 5191 G",car:"MB - GLC",              color:"DARK GREY", remark:"", status:"Assigned" },
+    { name:"Wilson Tong",   contact:"9002 2299", plate:"",          car:"",                      color:"",          remark:"", status:"Free" },
+    { name:"George",        contact:"9233 9863", plate:"SNX 1925 P",car:"Aeon",                  color:"GREY",      remark:"", status:"Assigned" },
+    { name:"Ujin",          contact:"81839862",  plate:"",          car:"BYD Seal",              color:"WHITE",     remark:"", status:"Free" },
+    { name:"Jasper",        contact:"98579120",  plate:"SMP 1013 T",car:"Hyundai",               color:"BLACK",     remark:"", status:"Assigned" },
+    { name:"Ps Edmund",     contact:"",          plate:"",          car:"",                      color:"",          remark:"", status:"Assigned" },
+    { name:"Lorraine Gan",  contact:"9067 7637", plate:"",          car:"Hyundai - SUV",         color:"BLUE",      remark:"", status:"Assigned" },
+    { name:"Ronald Seet",   contact:"9660 9045", plate:"SDT 577 A", car:"MB - S Class",          color:"BLACK",     remark:"", status:"Assigned" }
+  ];
+  db.drivers = drvSeed.map((d,i) => ({ id: 200+i, ...d }));
+
+  // Helper: look up chaperone/driver id by name string
+  function chapId(name) { const c = db.chaperones.find(x=>x.name===name); return c?c.id:''; }
+  function drvId(name)  { const d = db.drivers.find(x=>x.name===name);    return d?d.id:''; }
+
+  const raw = [
+    { name:"Prof Doug Petersen", spouse:"Sis Myrna", additional:"", country:"USA", title:"Professor Emeritus, School of Theology & Ministry, Vanguard University",
+      arr_flight:"SQ 37", arr_carrier:"Singapore Airlines", arr_from:"Los Angeles, CA", arr_date:"2026-07-11", arr_time:"07:50", arr_terminal:"T3",
+      dep_flight:"SQ 38", dep_carrier:"Singapore Airlines", dep_to:"Los Angeles, CA", dep_date:"2026-07-27", dep_time:"20:45", dep_terminal:"T3",
+      hotel:"PPSS / PPH", checkin:"2026-07-11", checkout:"2026-07-28",
+      arr_chaperone_id:chapId("Ps Yong / Lincoln"), arr_driver_id:drvId("Samuel Wong"),   arr_plate:"",          arr_car:"MB / CLA",    arr_color:"RED",
+      dep_chaperone_id:chapId("Ps Yong / Lincoln"), dep_driver_id:drvId("Lincoln Lim"),   dep_plate:"SKZ 5191 G",dep_car:"MB - GLC",    dep_color:"DARK GREY",
+      arr_remarks:"", dep_remarks:"",
+      session1:"Opening", respond1:"", session2:"", respond2:"",
+      allergen:"DP: No Tofu, Small seeds", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[true,false,false,true,false], mealSpouseAttendance:[true,false,false,true,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Prof Byron Klaus", spouse:"Ruth Lois", additional:"", country:"USA", title:"Scholar, Missionary, Past President of AGTS, Co-Editor of The Globalization of Pentecostalism: A Religion Made to Travel",
+      arr_flight:"UA 29", arr_carrier:"United Airlines", arr_from:"San Francisco, CA", arr_date:"2026-07-19", arr_time:"18:25", arr_terminal:"T2",
+      dep_flight:"UA 2", dep_carrier:"United Airlines", dep_to:"San Francisco, CA", dep_date:"2026-07-30", dep_time:"10:10", dep_terminal:"T2",
+      hotel:"PPH / HYATT", checkin:"2026-07-19", checkout:"2026-07-30",
+      arr_chaperone_id:chapId("Isaiah / Klessis"), arr_driver_id:drvId("Adrian Tan"), arr_plate:"SMY 4152 H", arr_car:"Land Rover - Discovery", arr_color:"RED",
+      dep_chaperone_id:chapId("Isaiah / Klessis"), dep_driver_id:drvId("Ronald Seet"),dep_plate:"SDT 577 A",  dep_car:"MB - S Class",         dep_color:"BLACK",
+      arr_remarks:"", dep_remarks:"",
+      session1:"Opening", respond1:"", session2:"Session 4 - D1", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[true,false,false,true,false], mealSpouseAttendance:[true,false,false,true,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[true,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Prof Roger Heuser", spouse:"Ps Gayle", additional:"", country:"USA", title:"Professor Emeritus, School of Theology & Ministry, Vanguard University",
+      arr_flight:"NH801(UA7935)", arr_carrier:"ANA", arr_from:"Tokyo", arr_date:"2026-07-18", arr_time:"00:45", arr_terminal:"T2",
+      dep_flight:"NH842(UA7992)", dep_carrier:"ANA", dep_to:"Tokyo", dep_date:"2026-07-27", dep_time:"11:05", dep_terminal:"T2",
+      hotel:"PPH", checkin:"2026-07-17", checkout:"2026-07-27",
+      arr_chaperone_id:chapId("Ian Chong"), arr_driver_id:drvId("Berwin Tay"), arr_plate:"SNT 691 J", arr_car:"Nissan - Serena", arr_color:"GREEN",
+      dep_chaperone_id:chapId("Ian Chong"), dep_driver_id:drvId("Berwin Tay"), dep_plate:"SNT 691 J", dep_car:"Nissan - Serena", dep_color:"GREEN",
+      arr_remarks:"", dep_remarks:"",
+      session1:"Session 11 - D3", respond1:"", session2:"", respond2:"",
+      allergen:"Gayle: no kiwi, no persimmon", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[true,false,false,true,false], mealSpouseAttendance:[true,false,false,true,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Prof Frank Macchia", spouse:"Verna", additional:"", country:"USA", title:"Professor of Christian Theology, Vanguard University",
+      arr_flight:"NH801(UA7935)", arr_carrier:"ANA", arr_from:"Tokyo", arr_date:"2026-07-18", arr_time:"00:45", arr_terminal:"T2",
+      dep_flight:"NH842(UA7992)", dep_carrier:"ANA", dep_to:"Tokyo", dep_date:"2026-07-27", dep_time:"11:05", dep_terminal:"T2",
+      hotel:"PPH", checkin:"2026-07-17", checkout:"2026-07-27",
+      arr_chaperone_id:chapId("Ps Eileen & Ps Johann"), arr_driver_id:drvId("Bernard Lim"), arr_plate:"SLB 5433 Z", arr_car:"", arr_color:"",
+      dep_chaperone_id:chapId("Ps Eileen & Ps Johann"), dep_driver_id:drvId("Bernard Lim"), dep_plate:"SLB 5433 Z", dep_car:"", dep_color:"",
+      arr_remarks:"", dep_remarks:"",
+      session1:"Session 1 - D1", respond1:"", session2:"", respond2:"",
+      allergen:"FM: No chilli, no seafood", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[true,false,false,true,false], mealSpouseAttendance:[true,false,false,true,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,true], activitySpouseAttendance:[false,true], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Bill Dogterom", spouse:"", additional:"", country:"USA", title:"Professor Emeritus, School of Theology & Ministry, Vanguard University",
+      arr_flight:"SQ 37", arr_carrier:"Singapore Airlines", arr_from:"Los Angeles, CA", arr_date:"2026-07-21", arr_time:"07:50", arr_terminal:"T3",
+      dep_flight:"SQ 38", dep_carrier:"Singapore Airlines", dep_to:"Los Angeles, CA", dep_date:"2026-07-27", dep_time:"20:45", dep_terminal:"T3",
+      hotel:"PPH", checkin:"2026-07-20", checkout:"2026-07-28",
+      arr_chaperone_id:"", arr_driver_id:"", arr_plate:"", arr_car:"", arr_color:"",
+      dep_chaperone_id:"", dep_driver_id:"", dep_plate:"", dep_car:"", dep_color:"",
+      arr_remarks:"", dep_remarks:"",
+      session1:"Session 2 - D1", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,true,false], mealSpouseAttendance:[false,false,false,false,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Prof Amos Yong", spouse:"Alma", additional:"", country:"USA", title:"Professor, Fuller Theological Seminary",
+      arr_flight:"SQ 107", arr_carrier:"Singapore Airlines", arr_from:"KL, Malaysia", arr_date:"2026-07-21", arr_time:"12:15", arr_terminal:"T3",
+      dep_flight:"SQ 38", dep_carrier:"Singapore Airlines", dep_to:"Los Angeles, CA", dep_date:"2026-07-28", dep_time:"20:45", dep_terminal:"T3",
+      hotel:"PPH", checkin:"2026-07-20", checkout:"2026-07-29",
+      arr_chaperone_id:chapId("BK and Pauline"), arr_driver_id:drvId("Boon Kiat"), arr_plate:"", arr_car:"", arr_color:"",
+      dep_chaperone_id:chapId("BK and Pauline"), dep_driver_id:drvId("Boon Kiat"), dep_plate:"", dep_car:"", dep_color:"",
+      arr_remarks:"", dep_remarks:"",
+      session1:"Session 9 - D3", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,false,false], mealSpouseAttendance:[false,false,false,false,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Prof Joy Qualls", spouse:"-", additional:"", country:"USA", title:"Associate Professor, Communication Studies, Biola University",
+      arr_flight:"SQ 11", arr_carrier:"Singapore Airlines", arr_from:"Los Angeles, CA", arr_date:"2026-07-20", arr_time:"00:55", arr_terminal:"T3",
+      dep_flight:"SQ 38", dep_carrier:"Singapore Airlines", dep_to:"Los Angeles, CA", dep_date:"2026-07-27", dep_time:"20:45", dep_terminal:"T3",
+      hotel:"PPH", checkin:"2026-07-19", checkout:"2026-07-28",
+      arr_chaperone_id:chapId("Cate & Vincent"), arr_driver_id:drvId("Ethan Leong"), arr_plate:"", arr_car:"", arr_color:"",
+      dep_chaperone_id:chapId("Cate & Vincent"), dep_driver_id:drvId("Ethan Leong"), dep_plate:"", dep_car:"", dep_color:"",
+      arr_remarks:"", dep_remarks:"",
+      session1:"Session 12 - D3", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"Coffee", bevcold:"Sparkling water", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,true,false], mealSpouseAttendance:[false,false,false,false,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,true], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Dr Wonsuk Ma", spouse:"Dr Julie Ma", additional:"", country:"South Korea", title:"Distinguished Professor of Global Christianity, Oral Roberts University",
+      arr_flight:"KE 643", arr_carrier:"Korean Air", arr_from:"Seoul, Korea", arr_date:"2026-07-20", arr_time:"19:15", arr_terminal:"T4",
+      dep_flight:"KE 644", dep_carrier:"Korean Air", dep_to:"Seoul, Korea", dep_date:"2026-07-27", dep_time:"22:00", dep_terminal:"T4",
+      hotel:"PPH", checkin:"2026-07-20", checkout:"2026-07-28",
+      arr_chaperone_id:chapId("Ps Edmund / Jia Hui"), arr_driver_id:drvId("Joel Quek"), arr_plate:"SKM 3377 U", arr_car:"Tesla 3", arr_color:"WHITE",
+      dep_chaperone_id:chapId("Ps Edmund / Jia Hui"), dep_driver_id:drvId("Ps Edmund"),  dep_plate:"SKM 3377 U", dep_car:"Tesla 3", dep_color:"WHITE",
+      arr_remarks:"", dep_remarks:"",
+      session1:"", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,true,false], mealSpouseAttendance:[false,false,false,true,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[true,false], activitySpouseAttendance:[true,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Dr Ivan Satyavrata", spouse:"Elizabeth", additional:"", country:"India", title:"Chairman, World Vision International",
+      arr_flight:"SQ 517", arr_carrier:"Singapore Airlines", arr_from:"Kolkata, India", arr_date:"2026-07-21", arr_time:"06:15", arr_terminal:"T3",
+      dep_flight:"SQ 516", dep_carrier:"Singapore Airlines", dep_to:"Kolkata, India", dep_date:"2026-07-27", dep_time:"20:40", dep_terminal:"T3",
+      hotel:"PPH", checkin:"2026-07-20", checkout:"2026-07-28",
+      arr_chaperone_id:chapId("Sandra Tan & Nicodemus"), arr_driver_id:drvId("Sandra"), arr_plate:"", arr_car:"BYD", arr_color:"",
+      dep_chaperone_id:chapId("Sandra Tan & Nicodemus"), dep_driver_id:drvId("Sandra"), dep_plate:"", dep_car:"BYD", dep_color:"",
+      arr_remarks:"", dep_remarks:"",
+      session1:"", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,true,false], mealSpouseAttendance:[false,false,false,true,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[true,false], activitySpouseAttendance:[true,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Wolfgang Vondey", spouse:"", additional:"", country:"", title:"",
+      arr_flight:"SQ 317", arr_carrier:"Singapore Airlines", arr_from:"", arr_date:"2026-07-20", arr_time:"07:30", arr_terminal:"",
+      dep_flight:"SQ 306", dep_carrier:"Singapore Airlines", dep_to:"", dep_date:"2026-07-27", dep_time:"01:05", dep_terminal:"",
+      hotel:"PPH", checkin:"2026-07-19", checkout:"2026-07-27",
+      arr_chaperone_id:chapId("Tat Haur / Naomi"), arr_driver_id:"", arr_plate:"", arr_car:"", arr_color:"",
+      dep_chaperone_id:chapId("Tat Haur / Naomi"), dep_driver_id:"", dep_plate:"", dep_car:"", dep_color:"",
+      arr_remarks:"", dep_remarks:"",
+      session1:"Session 5 - D2", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,true,false], mealSpouseAttendance:[false,false,false,false,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Dr Paul Bendor-Samuel", spouse:"-", additional:"", country:"UK", title:"",
+      arr_flight:"LH 768", arr_carrier:"Lufthansa", arr_from:"", arr_date:"2026-07-18", arr_time:"16:35", arr_terminal:"",
+      dep_flight:"LX 177", dep_carrier:"Swiss", dep_to:"", dep_date:"2026-07-26", dep_time:"23:25", dep_terminal:"",
+      hotel:"PPH", checkin:"2026-07-18", checkout:"2026-07-27",
+      arr_chaperone_id:chapId("Fu Ming and Matthias"), arr_driver_id:drvId("Fu Ming"), arr_plate:"SGX 3041 C", arr_car:"", arr_color:"",
+      dep_chaperone_id:chapId("Fu Ming and Matthias"), dep_driver_id:drvId("Fu Ming"), dep_plate:"SGX 3041 C", dep_car:"", dep_color:"",
+      arr_remarks:"", dep_remarks:"",
+      session1:"", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,true,false], mealSpouseAttendance:[false,false,false,false,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Prof Stephen Fogarty", spouse:"Sandra", additional:"", country:"Australia", title:"",
+      arr_flight:"QF2", arr_carrier:"Qantas", arr_from:"Sydney, Australia", arr_date:"2026-07-20", arr_time:"17:30", arr_terminal:"",
+      dep_flight:"QF 1", dep_carrier:"Qantas", dep_to:"Sydney, Australia", dep_date:"2026-07-26", dep_time:"23:20", dep_terminal:"",
+      hotel:"PPH", checkin:"2026-07-20", checkout:"2026-07-27",
+      arr_chaperone_id:chapId("Kelvin / Cynthia"), arr_driver_id:drvId("George"),       arr_plate:"SNX 1925 P", arr_car:"Aeon", arr_color:"GREY",
+      dep_chaperone_id:chapId("Kelvin / Cynthia"), dep_driver_id:drvId("Lorraine Gan"), dep_plate:"SNX 1925 P", dep_car:"Aeon", dep_color:"GREY",
+      arr_remarks:"", dep_remarks:"",
+      session1:"", respond1:"", session2:"", respond2:"",
+      allergen:"Sandra: no beef, no chilli, no red meat", foodpref:"Sandra: Chicken, duck and pork", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,true,false], mealSpouseAttendance:[false,false,false,true,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"David Perry", spouse:"Lauren", additional:"", country:"Australia", title:"Vice President and Provost at Alphacrucis University College",
+      arr_flight:"QF 81", arr_carrier:"Qantas", arr_from:"Sydney, Australia", arr_date:"2026-07-19", arr_time:"16:55", arr_terminal:"T1",
+      dep_flight:"QF 82", dep_carrier:"Qantas", dep_to:"Sydney, Australia", dep_date:"2026-07-27", dep_time:"21:00", dep_terminal:"T1",
+      hotel:"PPH", checkin:"2026-07-19", checkout:"2026-07-28",
+      arr_chaperone_id:chapId("Eng Wee"), arr_driver_id:drvId("Steven Chng"), arr_plate:"SMZ 4816 X", arr_car:"Audi - A2", arr_color:"BLUE",
+      dep_chaperone_id:chapId("Eng Wee"), dep_driver_id:drvId("Steven Chng"), dep_plate:"SMZ 4816 X", dep_car:"Audi - A2", dep_color:"BLUE",
+      arr_remarks:"", dep_remarks:"",
+      session1:"Devotion - D3", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,true,false], mealSpouseAttendance:[false,false,false,true,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Simon Chan", spouse:"-", additional:"", country:"Singapore", title:"Past Earnest Lau Professor of Systematic Theology, Trinity Theological College",
+      arr_flight:"", arr_carrier:"", arr_from:"", arr_date:"", arr_time:"", arr_terminal:"",
+      dep_flight:"", dep_carrier:"", dep_to:"", dep_date:"", dep_time:"", dep_terminal:"",
+      hotel:"", checkin:"", checkout:"",
+      arr_chaperone_id:chapId("Ps JX"), arr_driver_id:drvId("Jasper"), arr_plate:"SMP 1013 T", arr_car:"Hyundai", arr_color:"BLACK",
+      dep_chaperone_id:chapId("Ps JX"), dep_driver_id:drvId("Jasper"), dep_plate:"SMP 1013 T", dep_car:"Hyundai", dep_color:"BLACK",
+      arr_remarks:"", dep_remarks:"",
+      session1:"", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,false,false], mealSpouseAttendance:[false,false,false,false,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Dr. Bill Oliverio", spouse:"Rachel Lynae", additional:"Louis (Jr)", country:"USA", title:"Editor-in-Chief, Pneuma: The Journal of the Society for Pentecostal Studies",
+      arr_flight:"SQ 31", arr_carrier:"Singapore Airlines", arr_from:"San Francisco", arr_date:"2026-07-20", arr_time:"19:00", arr_terminal:"T3",
+      dep_flight:"SQ 32", dep_carrier:"Singapore Airlines", dep_to:"San Francisco", dep_date:"2026-07-27", dep_time:"21:00", dep_terminal:"T3",
+      hotel:"PPH", checkin:"2026-07-20", checkout:"",
+      arr_chaperone_id:"", arr_driver_id:"", arr_plate:"", arr_car:"", arr_color:"",
+      dep_chaperone_id:"", dep_driver_id:"", dep_plate:"", dep_car:"", dep_color:"",
+      arr_remarks:"", dep_remarks:"",
+      session1:"Session 8 - D2", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,true,false], mealSpouseAttendance:[false,false,false,true,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Candy Gunther Brown", spouse:"", additional:"", country:"USA", title:"Professor of Religious Studies, Indiana University Bloomington",
+      arr_flight:"UA 29", arr_carrier:"United Airlines", arr_from:"San Francisco", arr_date:"2026-07-20", arr_time:"18:35", arr_terminal:"T2",
+      dep_flight:"UA 28", dep_carrier:"United Airlines", dep_to:"San Francisco", dep_date:"2026-07-27", dep_time:"20:35", dep_terminal:"T2",
+      hotel:"PPH", checkin:"2026-07-20", checkout:"",
+      arr_chaperone_id:"", arr_driver_id:"", arr_plate:"", arr_car:"", arr_color:"",
+      dep_chaperone_id:"", dep_driver_id:"", dep_plate:"", dep_car:"", dep_color:"",
+      arr_remarks:"", dep_remarks:"",
+      session1:"Session 6 - D2", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,true,false], mealSpouseAttendance:[false,false,false,false,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Jonathan Black", spouse:"", additional:"", country:"UK", title:"Principal, The Apostolic Church Theology School; Director of Training, Apostolic Church UK",
+      arr_flight:"SQ 317", arr_carrier:"Singapore Airlines", arr_from:"London, UK", arr_date:"2026-07-21", arr_time:"07:30", arr_terminal:"",
+      dep_flight:"SQ 318", dep_carrier:"Singapore Airlines", dep_to:"London, UK", dep_date:"2026-07-27", dep_time:"12:35", dep_terminal:"T3",
+      hotel:"PPH", checkin:"2026-07-20", checkout:"",
+      arr_chaperone_id:"", arr_driver_id:"", arr_plate:"", arr_car:"", arr_color:"",
+      dep_chaperone_id:"", dep_driver_id:"", dep_plate:"", dep_car:"", dep_color:"",
+      arr_remarks:"", dep_remarks:"",
+      session1:"Session 10 - D3", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,true,false], mealSpouseAttendance:[false,false,false,false,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Melissa Archer", spouse:"", additional:"", country:"USA", title:"Professor of New Testament, Co-Director MA in Bible and Theology, Trinity Bible College and Graduate School",
+      arr_flight:"AA8482 (JL711)", arr_carrier:"American Airlines", arr_from:"Tokyo", arr_date:"2026-07-19", arr_time:"00:20", arr_terminal:"T1",
+      dep_flight:"AA 8413 (JL712)", dep_carrier:"American Airlines", dep_to:"Tokyo", dep_date:"2026-07-27", dep_time:"08:05", dep_terminal:"T1",
+      hotel:"PPH", checkin:"2026-07-18", checkout:"",
+      arr_chaperone_id:"", arr_driver_id:"", arr_plate:"", arr_car:"", arr_color:"",
+      dep_chaperone_id:"", dep_driver_id:"", dep_plate:"", dep_car:"", dep_color:"",
+      arr_remarks:"", dep_remarks:"",
+      session1:"Session 3 - D1", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,true,false], mealSpouseAttendance:[false,false,false,false,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Kenneth Archer", spouse:"", additional:"", country:"USA", title:"Professor of Theology and Pentecostal Studies, Co-Director MA in Bible and Theology, Trinity Bible College and Graduate School",
+      arr_flight:"AA8482 (JL711)", arr_carrier:"American Airlines", arr_from:"Tokyo", arr_date:"2026-07-19", arr_time:"00:20", arr_terminal:"T1",
+      dep_flight:"AA 8413 (JL712)", dep_carrier:"American Airlines", dep_to:"Tokyo", dep_date:"2026-07-27", dep_time:"08:05", dep_terminal:"T1",
+      hotel:"PPH", checkin:"2026-07-18", checkout:"",
+      arr_chaperone_id:"", arr_driver_id:"", arr_plate:"", arr_car:"", arr_color:"",
+      dep_chaperone_id:"", dep_driver_id:"", dep_plate:"", dep_car:"", dep_color:"",
+      arr_remarks:"", dep_remarks:"",
+      session1:"Session 7 - D2", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,true,false], mealSpouseAttendance:[false,false,false,false,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"David Michael Johnson", spouse:"Debra Elaine", additional:"", country:"", title:"Director for APTS Press, Managing Editor of Asian Journal of Pentecostal Studies & Instructor in Intercultural Studies",
+      arr_flight:"UA 1", arr_carrier:"United Airlines", arr_from:"San Francisco", arr_date:"2026-07-21", arr_time:"06:15", arr_terminal:"T2",
+      dep_flight:"UA 2", dep_carrier:"United Airlines", dep_to:"San Francisco", dep_date:"2026-07-27", dep_time:"08:45", dep_terminal:"T2",
+      hotel:"PPH", checkin:"", checkout:"",
+      arr_chaperone_id:"", arr_driver_id:drvId("Martin Ong"),  arr_plate:"", arr_car:"MB - S Class",          arr_color:"",
+      dep_chaperone_id:"", dep_driver_id:drvId("Adrian Tan"),  dep_plate:"SMY 4152 H", dep_car:"Land Rover - Discovery", dep_color:"RED",
+      arr_remarks:"", dep_remarks:"",
+      session1:"", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,true,false], mealSpouseAttendance:[false,false,false,true,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,true], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Joel Tejedo", spouse:"Carolyn", additional:"Luke Tejejo, Joel Jr Tejejo, Hannah Tejejo", country:"Philippines", title:"Director, Asia Pacific Research Center, Asia Pacific Theological Seminary",
+      arr_flight:"5J535", arr_carrier:"Cebu Pacific", arr_from:"Clark, Philippines", arr_date:"2026-07-21", arr_time:"12:40", arr_terminal:"T4",
+      dep_flight:"5J536", dep_carrier:"Cebu Pacific", dep_to:"Clark, Philippines", dep_date:"2026-07-28", dep_time:"13:25", dep_terminal:"T4",
+      hotel:"PPH", checkin:"", checkout:"",
+      arr_chaperone_id:"", arr_driver_id:drvId("Lester Chee"), arr_plate:"", arr_car:"MB - R Class", arr_color:"",
+      dep_chaperone_id:"", dep_driver_id:"", dep_plate:"", dep_car:"", dep_color:"",
+      arr_remarks:"", dep_remarks:"",
+      session1:"Dr Ivan Satyavrata", respond1:"Session 8 - D2", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"Preaching in Filipino Svc on 2 Nov", remark2:"",
+      mealAttendance:[false,false,false,true,false], mealSpouseAttendance:[false,false,false,true,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[true,false], activitySpouseAttendance:[true,false], activityAdditionalAttendance:[false,false], photo:""
+    },
+    { name:"Nathan Poole", spouse:"Annalisa", additional:"", country:"", title:"",
+      arr_flight:"SQ 105", arr_carrier:"Singapore Airlines", arr_from:"KL, Malaysia", arr_date:"2026-07-21", arr_time:"11:45", arr_terminal:"",
+      dep_flight:"SQ 38", dep_carrier:"Singapore Airlines", dep_to:"Los Angeles, CA", dep_date:"2026-07-28", dep_time:"20:45", dep_terminal:"T3",
+      hotel:"PPH", checkin:"", checkout:"",
+      arr_chaperone_id:"", arr_driver_id:"", arr_plate:"", arr_car:"", arr_color:"",
+      dep_chaperone_id:"", dep_driver_id:"", dep_plate:"", dep_car:"", dep_color:"",
+      arr_remarks:"", dep_remarks:"",
+      session1:"", respond1:"", session2:"", respond2:"",
+      allergen:"", foodpref:"", bevhot:"", bevcold:"", remark1:"", remark2:"",
+      mealAttendance:[false,false,false,false,false], mealSpouseAttendance:[false,false,false,false,false], mealAdditionalAttendance:[false,false,false,false,false],
+      activityAttendance:[false,false], activitySpouseAttendance:[false,false], activityAdditionalAttendance:[false,false], photo:""
+    }
+  ];
+  db.guests = raw.map((g, i) => ({ id: i + 1, ...g }));
+  saveDB();
+}
+
+// ═══════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  const el = document.getElementById('view-' + name);
+  if (el) el.classList.add('active');
+  const tab = document.querySelector(`.nav-tab[data-view="${name}"]`);
+  if (tab) tab.classList.add('active');
+
+  if (name === 'guest-list') renderGuestList();
+  if (name === 'arrivals') renderArrivals();
+  if (name === 'departures') renderDepartures();
+  if (name === 'meals') renderMeals();
+  if (name === 'activities') renderActivities();
+  if (name === 'events') renderEvents();
+  if (name === 'hotel') renderHotel();
+  if (name === 'chaperones') renderChaperones();
+  if (name === 'drivers') renderDrivers();
+  if (name === 'add-guest') { renderFormCheckboxes(); populateChaperoneDriverSelects(); }
+  window.scrollTo(0,0);
+}
+
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => showView(tab.dataset.view));
+});
+
+// ═══════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════
+function initials(name) {
+  if (!name) return '?';
+  return name.split(' ').filter(w => w).slice(0,2).map(w => w[0]).join('').toUpperCase();
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  try {
+    const dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString('en-SG', { day:'2-digit', month:'short', year:'numeric' });
+  } catch { return d; }
+}
+
+function fmtTime(t) {
+  if (!t) return '—';
+  try {
+    const [h,m] = t.split(':');
+    const hr = parseInt(h);
+    const ampm = hr >= 12 ? 'PM' : 'AM';
+    const h12 = ((hr % 12) || 12);
+    return `${h12}:${m} ${ampm}`;
+  } catch { return t; }
+}
+
+function dayOfWeek(d) {
+  if (!d) return '';
+  try {
+    return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+  } catch { return ''; }
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast ' + type;
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// ═══════════════════════════════════════════
+//  GUEST LIST VIEW
+// ═══════════════════════════════════════════
+function renderGuestList() {
+  updateStats();
+  updateCountryFilter();
+  filterGuests();
+}
+
+function updateStats() {
+  const total = db.guests.length;
+  const countries = [...new Set(db.guests.map(g=>g.country).filter(Boolean))].length;
+  const arriving = db.guests.filter(g=>g.arr_date).length;
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${total}</div><div class="stat-label">Total Guests</div></div>
+    <div class="stat-card gold"><div class="stat-value">${countries}</div><div class="stat-label">Countries</div></div>
+    <div class="stat-card"><div class="stat-value">${arriving}</div><div class="stat-label">Arrivals Tracked</div></div>
+    <div class="stat-card"><div class="stat-value">${db.mealEvents.length}</div><div class="stat-label">Meal Events</div></div>
+    <div class="stat-card"><div class="stat-value">${db.activityOptions.length}</div><div class="stat-label">Activities</div></div>
+  `;
+  document.getElementById('headerGuestCount').textContent = `${total} Guests`;
+}
+
+function updateCountryFilter() {
+  const sel = document.getElementById('filterCountry');
+  const cur = sel.value;
+  const countries = [...new Set(db.guests.map(g=>g.country).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All Countries</option>' + countries.map(c=>`<option value="${c}">${c}</option>`).join('');
+  sel.value = cur;
+}
+
+function filterGuests() {
+  const q = (document.getElementById('guestSearch').value || '').toLowerCase();
+  const country = document.getElementById('filterCountry').value;
+  const filtered = db.guests.filter(g => {
+    const matchQ = !q || (g.name||'').toLowerCase().includes(q) || (g.spouse||'').toLowerCase().includes(q) || (g.country||'').toLowerCase().includes(q) || (g.title||'').toLowerCase().includes(q);
+    const matchC = !country || g.country === country;
+    return matchQ && matchC;
+  });
+  renderGuestCards(filtered);
+}
+
+function renderGuestCards(guests) {
+  const grid = document.getElementById('guestGrid');
+  if (!guests.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--slate-light); padding:40px;">No guests found.</div>';
+    return;
+  }
+  grid.innerHTML = guests.map(g => {
+    const av = g.photo ? `<img src="${g.photo}" alt="${esc(g.name)}">` : initials(g.name);
+    const spousePill = g.spouse && g.spouse !== '-' && g.spouse !== '0' ? `<span class="pill pill-spouse">+${esc(g.spouse)}</span>` : '';
+    const arrPill = g.arr_flight ? `<span class="pill pill-arrival">✈ ${esc(g.arr_flight)}</span>` : '';
+    const depPill = g.dep_flight ? `<span class="pill pill-departure">🛫 ${esc(g.dep_flight)}</span>` : '';
+    const hotelPill = g.hotel ? `<span class="pill pill-hotel">🏨 ${esc(g.hotel)}</span>` : '';
+    return `
+    <div class="guest-card" onclick="openGuestModal(${g.id})">
+      <div class="guest-card-header">
+        <div class="guest-avatar">${av}</div>
+        <div>
+          <div class="guest-name">${esc(g.name)}</div>
+          ${g.country ? `<div class="guest-country">${esc(g.country)}</div>` : ''}
+          ${g.title ? `<div class="guest-role">${esc(g.title.split('\n')[0].substring(0,80))}${g.title.length>80?'…':''}</div>` : ''}
+        </div>
+      </div>
+      <div class="guest-pills">${spousePill}${arrPill}${depPill}${hotelPill}</div>
+      ${g.arr_date ? `<div class="guest-flight-info">
+        <strong>ARR</strong> ${fmtDate(g.arr_date)} ${fmtTime(g.arr_time)} ${g.arr_terminal ? `<span class="terminal-badge">${g.arr_terminal}</span>` : ''}
+        ${g.dep_date ? `<br><strong>DEP</strong> ${fmtDate(g.dep_date)} ${fmtTime(g.dep_time)} ${g.dep_terminal ? `<span class="terminal-badge">${g.dep_terminal}</span>` : ''}` : ''}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+//  GUEST MODAL
+// ═══════════════════════════════════════════
+function openGuestModal(id) {
+  const g = db.guests.find(x => x.id === id);
+  if (!g) return;
+  const av = g.photo ? `<img src="${g.photo}" alt="">` : initials(g.name);
+  document.getElementById('modalAvatar').innerHTML = av;
+  document.getElementById('modalName').textContent = g.name;
+  document.getElementById('modalSubtitle').textContent = [g.country, g.spouse && g.spouse !== '-' && g.spouse !== '0' ? 'Spouse: ' + g.spouse : ''].filter(Boolean).join(' · ');
+
+  const mealNames = db.mealEvents.map(m => m.name);
+  const actNames = db.activityOptions.map(a => a.name);
+
+  document.getElementById('modalBody').innerHTML = `
+    <div class="modal-section">
+      <div class="modal-section-title">Profile</div>
+      <div class="info-grid">
+        <div class="info-item"><label>Country</label><span>${g.country||'—'}</span></div>
+        <div class="info-item"><label>Spouse / Partner</label><span>${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? g.spouse : '—'}</span></div>
+        <div class="info-item"><label>Hotel</label><span>${g.hotel||'—'}</span></div>
+        <div class="info-item"><label>Room</label><span>${g.room||'—'}</span></div>
+        <div class="info-item"><label>Check-in</label><span>${fmtDate(g.checkin)||'—'}</span></div>
+        <div class="info-item"><label>Check-out</label><span>${fmtDate(g.checkout)||'—'}</span></div>
+      </div>
+      ${g.title ? `<div style="margin-top:10px; font-size:0.8rem; color:var(--slate); font-style:italic; line-height:1.6;">${esc(g.title)}</div>` : ''}
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">✈️ Arrival</div>
+      <div class="info-grid">
+        <div class="info-item"><label>Flight</label><span>${g.arr_flight||'—'}</span></div>
+        <div class="info-item"><label>Carrier</label><span>${g.arr_carrier||'—'}</span></div>
+        <div class="info-item"><label>From</label><span>${g.arr_from||'—'}</span></div>
+        <div class="info-item"><label>Date</label><span>${fmtDate(g.arr_date)||'—'}</span></div>
+        <div class="info-item"><label>Time</label><span>${fmtTime(g.arr_time)||'—'}</span></div>
+        <div class="info-item"><label>Terminal</label><span>${g.arr_terminal ? `<span class="terminal-badge">${g.arr_terminal}</span>` : '—'}</span></div>
+        <div class="info-item"><label>Chaperone</label><span>${chapName(g.arr_chaperone_id)||'—'}</span></div>
+        <div class="info-item"><label>Driver</label><span>${drvName(g.arr_driver_id)||'—'}</span></div>
+        <div class="info-item"><label>Car</label><span>${[g.arr_car, g.arr_color, g.arr_plate].filter(Boolean).join(' · ')||'—'}</span></div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">🛫 Departure</div>
+      <div class="info-grid">
+        <div class="info-item"><label>Flight</label><span>${g.dep_flight||'—'}</span></div>
+        <div class="info-item"><label>Carrier</label><span>${g.dep_carrier||'—'}</span></div>
+        <div class="info-item"><label>To</label><span>${g.dep_to||'—'}</span></div>
+        <div class="info-item"><label>Date</label><span>${fmtDate(g.dep_date)||'—'}</span></div>
+        <div class="info-item"><label>Time</label><span>${fmtTime(g.dep_time)||'—'}</span></div>
+        <div class="info-item"><label>Terminal</label><span>${g.dep_terminal ? `<span class="terminal-badge">${g.dep_terminal}</span>` : '—'}</span></div>
+        <div class="info-item"><label>Chaperone</label><span>${chapName(g.dep_chaperone_id)||'—'}</span></div>
+        <div class="info-item"><label>Driver</label><span>${drvName(g.dep_driver_id)||'—'}</span></div>
+        <div class="info-item"><label>Car</label><span>${[g.dep_car, g.dep_color, g.dep_plate].filter(Boolean).join(' · ')||'—'}</span></div>
+      </div>
+    </div>
+    ${(g.session1||g.session2) ? `<div class="modal-section">
+      <div class="modal-section-title">🎤 Sessions</div>
+      <div class="info-grid">
+        ${g.session1 ? `<div class="info-item"><label>Session 1</label><span>${esc(g.session1)}</span></div>` : ''}
+        ${g.respond1 ? `<div class="info-item"><label>Respondent 1</label><span>${esc(g.respond1)}</span></div>` : ''}
+        ${g.session2 ? `<div class="info-item"><label>Session 2</label><span>${esc(g.session2)}</span></div>` : ''}
+        ${g.respond2 ? `<div class="info-item"><label>Respondent 2</label><span>${esc(g.respond2)}</span></div>` : ''}
+      </div>
+    </div>` : ''}
+    ${(g.allergen||g.foodpref||g.bevhot||g.bevcold) ? `<div class="modal-section">
+      <div class="modal-section-title">🍽️ Dietary</div>
+      <div class="info-grid">
+        ${g.allergen ? `<div class="info-item" style="grid-column:1/-1"><label>Allergen / Dislike</label><span>${esc(g.allergen)}</span></div>` : ''}
+        ${g.foodpref ? `<div class="info-item" style="grid-column:1/-1"><label>Food Preference</label><span>${esc(g.foodpref)}</span></div>` : ''}
+        ${g.bevhot ? `<div class="info-item"><label>Hot Beverage</label><span>${esc(g.bevhot)}</span></div>` : ''}
+        ${g.bevcold ? `<div class="info-item"><label>Cold Beverage</label><span>${esc(g.bevcold)}</span></div>` : ''}
+      </div>
+    </div>` : ''}
+    ${mealNames.length ? `<div class="modal-section">
+      <div class="modal-section-title">🍽️ Meal Attendance</div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        ${mealNames.map((m,i) => {
+          const att = g.mealAttendance && g.mealAttendance[i];
+          return `<span style="background:${att?'var(--green-bg)':'var(--ivory)'}; color:${att?'var(--green)':'var(--slate-light)'}; border:1px solid ${att?'rgba(45,122,79,0.3)':'var(--border)'}; padding:4px 12px; border-radius:20px; font-size:0.74rem; font-weight:600;">${att?'✓':'✗'} ${esc(m)}</span>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
+    ${actNames.length ? `<div class="modal-section">
+      <div class="modal-section-title">🎯 Activities</div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        ${actNames.map((a,i) => {
+          const att = g.activityAttendance && g.activityAttendance[i];
+          return `<span style="background:${att?'var(--blue-bg)':'var(--ivory)'}; color:${att?'var(--blue)':'var(--slate-light)'}; border:1px solid ${att?'rgba(59,91,219,0.3)':'var(--border)'}; padding:4px 12px; border-radius:20px; font-size:0.74rem; font-weight:600;">${att?'✓':'✗'} ${esc(a)}</span>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
+    ${(g.remark1||g.remark2) ? `<div class="modal-section">
+      <div class="modal-section-title">📝 Remarks</div>
+      ${g.remark1 ? `<div style="font-size:0.84rem; margin-bottom:6px;">${esc(g.remark1)}</div>` : ''}
+      ${g.remark2 ? `<div style="font-size:0.84rem;">${esc(g.remark2)}</div>` : ''}
+    </div>` : ''}
+    <div class="btn-row" style="padding-top:6px; border-top:1px solid var(--border);">
+      <button class="btn btn-gold btn-sm" onclick="closeModal('guestModal'); editGuest(${g.id})">✏️ Edit Guest</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteGuest(${g.id})">🗑 Remove</button>
+    </div>
+  `;
+  document.getElementById('guestModal').classList.add('open');
+}
+
+// ═══════════════════════════════════════════
+//  ADD / EDIT GUEST FORM
+// ═══════════════════════════════════════════
+function cbRow(prefix, items, type) {
+  const empty = `<div style="font-size:0.82rem;color:var(--slate-light);">No ${type} defined yet.</div>`;
+  if (!items.length) return empty;
+  return items.map((item, i) => {
+    const name = item.name || item;
+    const date = item.date ? fmtDate(item.date) : '';
+    return `<label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;font-weight:500;cursor:pointer;background:var(--ivory);border:1px solid var(--border);border-radius:6px;padding:6px 12px;">
+      <input type="checkbox" id="${prefix}_${i}" style="width:auto;"> ${esc(name)} ${date ? `<span style="font-size:0.68rem;color:var(--slate-light);">${date}</span>` : ''}
+    </label>`;
+  }).join('');
+}
+
+function renderFormCheckboxes() {
+  const spouseName = document.getElementById('f_spouse')?.value.trim() || '';
+  const additionalName = document.getElementById('f_additional')?.value.trim() || '';
+  const hasSpouse = spouseName && spouseName !== '-' && spouseName !== '0';
+  const hasAdditional = !!additionalName;
+
+  // ── Meals ──
+  const mc = document.getElementById('mealCheckboxes');
+  if (mc) mc.innerHTML = cbRow('meal_cb', db.mealEvents, 'meal events');
+
+  const msw = document.getElementById('mealCheckboxes_spouse_wrap');
+  const ms = document.getElementById('mealCheckboxes_spouse');
+  if (msw && ms) {
+    msw.style.display = hasSpouse ? '' : 'none';
+    document.getElementById('meal_spouse_label').textContent = spouseName;
+    ms.innerHTML = cbRow('meal_sp', db.mealEvents, 'meal events');
+  }
+
+  const maw = document.getElementById('mealCheckboxes_additional_wrap');
+  const ma = document.getElementById('mealCheckboxes_additional');
+  if (maw && ma) {
+    maw.style.display = hasAdditional ? '' : 'none';
+    document.getElementById('meal_additional_label').textContent = additionalName;
+    ma.innerHTML = cbRow('meal_add', db.mealEvents, 'meal events');
+  }
+
+  // ── Activities ──
+  const ac = document.getElementById('activityCheckboxes');
+  if (ac) ac.innerHTML = db.activityOptions.length
+    ? cbRow('act_cb', db.activityOptions, 'activities')
+    : '<div style="font-size:0.82rem;color:var(--slate-light);">No activity options defined yet. Add them in the Activities tab.</div>';
+
+  const asw = document.getElementById('activityCheckboxes_spouse_wrap');
+  const as_ = document.getElementById('activityCheckboxes_spouse');
+  if (asw && as_) {
+    asw.style.display = hasSpouse ? '' : 'none';
+    document.getElementById('act_spouse_label').textContent = spouseName;
+    as_.innerHTML = db.activityOptions.length ? cbRow('act_sp', db.activityOptions, 'activities') : '<div style="font-size:0.82rem;color:var(--slate-light);">No activity options yet.</div>';
+  }
+
+  const aaw = document.getElementById('activityCheckboxes_additional_wrap');
+  const aa = document.getElementById('activityCheckboxes_additional');
+  if (aaw && aa) {
+    aaw.style.display = hasAdditional ? '' : 'none';
+    document.getElementById('act_additional_label').textContent = additionalName;
+    aa.innerHTML = db.activityOptions.length ? cbRow('act_add', db.activityOptions, 'activities') : '<div style="font-size:0.82rem;color:var(--slate-light);">No activity options yet.</div>';
+  }
+}
+
+function saveGuest(e) {
+  e.preventDefault();
+  const id = document.getElementById('editGuestId').value;
+  const mealAtt    = db.mealEvents.map((_,i) => document.getElementById(`meal_cb_${i}`)?.checked || false);
+  const mealSpAtt  = db.mealEvents.map((_,i) => document.getElementById(`meal_sp_${i}`)?.checked || false);
+  const mealAddAtt = db.mealEvents.map((_,i) => document.getElementById(`meal_add_${i}`)?.checked || false);
+  const actAtt     = db.activityOptions.map((_,i) => document.getElementById(`act_cb_${i}`)?.checked || false);
+  const actSpAtt   = db.activityOptions.map((_,i) => document.getElementById(`act_sp_${i}`)?.checked || false);
+  const actAddAtt  = db.activityOptions.map((_,i) => document.getElementById(`act_add_${i}`)?.checked || false);
+
+  const guest = {
+    name: document.getElementById('f_name').value.trim(),
+    spouse: document.getElementById('f_spouse').value.trim(),
+    additional: document.getElementById('f_additional').value.trim(),
+    country: document.getElementById('f_country').value.trim(),
+    title: document.getElementById('f_title').value.trim(),
+    arr_flight: document.getElementById('f_arr_flight').value.trim(),
+    arr_carrier: document.getElementById('f_arr_carrier').value.trim(),
+    arr_from: document.getElementById('f_arr_from').value.trim(),
+    arr_date: document.getElementById('f_arr_date').value,
+    arr_time: document.getElementById('f_arr_time').value,
+    arr_terminal: document.getElementById('f_arr_terminal').value,
+    arr_chaperone_id: parseInt(document.getElementById('f_arr_chaperone_id').value) || '',
+    arr_driver_id:    parseInt(document.getElementById('f_arr_driver_id').value)    || '',
+    arr_plate: document.getElementById('f_arr_plate').value.trim(),
+    arr_car:   document.getElementById('f_arr_car').value.trim(),
+    arr_color: document.getElementById('f_arr_color').value.trim(),
+    arr_remarks: document.getElementById('f_arr_remarks').value.trim(),
+    dep_flight: document.getElementById('f_dep_flight').value.trim(),
+    dep_carrier: document.getElementById('f_dep_carrier').value.trim(),
+    dep_to: document.getElementById('f_dep_to').value.trim(),
+    dep_date: document.getElementById('f_dep_date').value,
+    dep_time: document.getElementById('f_dep_time').value,
+    dep_terminal: document.getElementById('f_dep_terminal').value,
+    dep_chaperone_id: parseInt(document.getElementById('f_dep_chaperone_id').value) || '',
+    dep_driver_id:    parseInt(document.getElementById('f_dep_driver_id').value)    || '',
+    dep_plate: document.getElementById('f_dep_plate').value.trim(),
+    dep_car:   document.getElementById('f_dep_car').value.trim(),
+    dep_color: document.getElementById('f_dep_color').value.trim(),
+    dep_remarks: document.getElementById('f_dep_remarks').value.trim(),
+    hotel: document.getElementById('f_hotel').value.trim(),
+    room: document.getElementById('f_room').value.trim(),
+    checkin: document.getElementById('f_checkin').value,
+    checkout: document.getElementById('f_checkout').value,
+    session1: document.getElementById('f_session1').value.trim(),
+    respond1: document.getElementById('f_respond1').value.trim(),
+    session2: document.getElementById('f_session2').value.trim(),
+    respond2: document.getElementById('f_respond2').value.trim(),
+    allergen: document.getElementById('f_allergen').value.trim(),
+    foodpref: document.getElementById('f_foodpref').value.trim(),
+    bevhot: document.getElementById('f_bevhot').value.trim(),
+    bevcold: document.getElementById('f_bevcold').value.trim(),
+    remark1: document.getElementById('f_remark1').value.trim(),
+    remark2: document.getElementById('f_remark2').value.trim(),
+    mealAttendance: mealAtt,
+    mealSpouseAttendance: mealSpAtt,
+    mealAdditionalAttendance: mealAddAtt,
+    activityAttendance: actAtt,
+    activitySpouseAttendance: actSpAtt,
+    activityAdditionalAttendance: actAddAtt,
+    photo: document.getElementById('photoPreview').src.startsWith('data:') ? document.getElementById('photoPreview').src : ''
+  };
+
+  if (id) {
+    const idx = db.guests.findIndex(g => g.id === parseInt(id));
+    if (idx >= 0) { guest.id = parseInt(id); db.guests[idx] = guest; }
+  } else {
+    guest.id = Date.now();
+    db.guests.push(guest);
+  }
+  saveDB();
+  showToast(id ? '✓ Guest updated successfully' : '✓ Guest added successfully', 'success');
+  clearForm();
+  showView('guest-list');
+}
+
+function editGuest(id) {
+  const g = db.guests.find(x => x.id === id);
+  if (!g) return;
+  showView('add-guest');
+  setTimeout(() => {
+    document.getElementById('editGuestId').value = g.id;
+    document.getElementById('formTitle').textContent = 'Edit Guest';
+    document.getElementById('formDesc').textContent = 'Update the information for ' + g.name;
+    const fields = ['name','spouse','additional','country','title',
+      'arr_flight','arr_carrier','arr_from','arr_date','arr_time','arr_terminal','arr_plate','arr_car','arr_color','arr_remarks',
+      'dep_flight','dep_carrier','dep_to','dep_date','dep_time','dep_terminal','dep_plate','dep_car','dep_color','dep_remarks',
+      'hotel','room','checkin','checkout','session1','respond1','session2','respond2',
+      'allergen','foodpref','bevhot','bevcold','remark1','remark2'];
+    fields.forEach(f => {
+      const el = document.getElementById('f_' + f);
+      if (el) el.value = g[f] || '';
+    });
+    // Restore chaperone/driver selects
+    populateChaperoneDriverSelects();
+    setTimeout(() => {
+      ['arr','dep'].forEach(leg => {
+        const cs = document.getElementById(`f_${leg}_chaperone_id`);
+        const ds = document.getElementById(`f_${leg}_driver_id`);
+        if (cs) cs.value = g[`${leg}_chaperone_id`] || '';
+        if (ds) ds.value = g[`${leg}_driver_id`]    || '';
+      });
+    }, 20);
+    if (g.photo) {
+      document.getElementById('photoPreview').src = g.photo;
+      document.getElementById('photoPreview').style.display = 'block';
+      document.getElementById('photoPlaceholder').style.display = 'none';
+    }
+    renderFormCheckboxes();
+    setTimeout(() => {
+      if (g.mealAttendance)           g.mealAttendance.forEach((v,i)           => { const cb = document.getElementById(`meal_cb_${i}`);  if(cb) cb.checked = v; });
+      if (g.mealSpouseAttendance)     g.mealSpouseAttendance.forEach((v,i)     => { const cb = document.getElementById(`meal_sp_${i}`);  if(cb) cb.checked = v; });
+      if (g.mealAdditionalAttendance) g.mealAdditionalAttendance.forEach((v,i) => { const cb = document.getElementById(`meal_add_${i}`); if(cb) cb.checked = v; });
+      if (g.activityAttendance)           g.activityAttendance.forEach((v,i)           => { const cb = document.getElementById(`act_cb_${i}`);  if(cb) cb.checked = v; });
+      if (g.activitySpouseAttendance)     g.activitySpouseAttendance.forEach((v,i)     => { const cb = document.getElementById(`act_sp_${i}`);  if(cb) cb.checked = v; });
+      if (g.activityAdditionalAttendance) g.activityAdditionalAttendance.forEach((v,i) => { const cb = document.getElementById(`act_add_${i}`); if(cb) cb.checked = v; });
+    }, 50);
+  }, 50);
+}
+
+function clearForm() {
+  document.getElementById('guestForm').reset();
+  document.getElementById('editGuestId').value = '';
+  document.getElementById('formTitle').textContent = 'Add New Guest';
+  document.getElementById('formDesc').textContent = 'Fill in the guest profile details below. All fields can be updated later.';
+  document.getElementById('photoPreview').src = '';
+  document.getElementById('photoPreview').style.display = 'none';
+  document.getElementById('photoPlaceholder').style.display = 'flex';
+}
+
+function deleteGuest(id) {
+  if (!confirm('Remove this guest from the list? This cannot be undone.')) return;
+  db.guests = db.guests.filter(g => g.id !== id);
+  saveDB();
+  closeModal('guestModal');
+  showToast('Guest removed', 'error');
+  renderGuestList();
+}
+
+function handlePhotoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('photoPreview').src = ev.target.result;
+    document.getElementById('photoPreview').style.display = 'block';
+    document.getElementById('photoPlaceholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+// ═══════════════════════════════════════════
+//  ARRIVALS VIEW
+// ═══════════════════════════════════════════
+function renderArrivals() {
+  const q = (document.getElementById('arrSearch')?.value || '').toLowerCase();
+  const sorted = [...db.guests].filter(g => g.arr_date || g.arr_flight).sort((a,b) => {
+    const ad = (a.arr_date||'9999') + (a.arr_time||'');
+    const bd = (b.arr_date||'9999') + (b.arr_time||'');
+    return ad.localeCompare(bd);
+  }).filter(g => !q || (g.name||'').toLowerCase().includes(q) || (g.arr_flight||'').toLowerCase().includes(q) || (g.arr_from||'').toLowerCase().includes(q));
+
+  const body = document.getElementById('arrivalsBody');
+  body.innerHTML = sorted.map((g, i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${fmtDate(g.arr_date)}</td>
+      <td>${dayOfWeek(g.arr_date)}</td>
+      <td class="td-time">${fmtTime(g.arr_time)}</td>
+      <td class="td-flight">${esc(g.arr_flight)||'—'}</td>
+      <td style="font-size:0.78rem;">${esc(g.arr_carrier)||'—'}</td>
+      <td style="font-size:0.78rem;">${esc(g.arr_from)||'—'}</td>
+      <td>${g.arr_terminal ? `<span class="terminal-badge">${g.arr_terminal}</span>` : '—'}</td>
+      <td class="td-name">${esc(g.name)}</td>
+      <td style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
+      <td style="font-size:0.78rem;">${esc(chapName(g.arr_chaperone_id))||'—'}</td>
+      <td style="font-size:0.78rem;">${esc(drvName(g.arr_driver_id))||'—'}</td>
+      <td style="font-size:0.75rem;color:var(--slate-light);">${esc(g.arr_remarks)||'—'}</td>
+    </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════
+//  DEPARTURES VIEW
+// ═══════════════════════════════════════════
+function renderDepartures() {
+  const q = (document.getElementById('depSearch')?.value || '').toLowerCase();
+  const sorted = [...db.guests].filter(g => g.dep_date || g.dep_flight).sort((a,b) => {
+    const ad = (a.dep_date||'9999') + (a.dep_time||'');
+    const bd = (b.dep_date||'9999') + (b.dep_time||'');
+    return ad.localeCompare(bd);
+  }).filter(g => !q || (g.name||'').toLowerCase().includes(q) || (g.dep_flight||'').toLowerCase().includes(q) || (g.dep_to||'').toLowerCase().includes(q));
+
+  const body = document.getElementById('departuresBody');
+  body.innerHTML = sorted.map((g, i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${fmtDate(g.dep_date)}</td>
+      <td>${dayOfWeek(g.dep_date)}</td>
+      <td class="td-time">${fmtTime(g.dep_time)}</td>
+      <td class="td-flight">${esc(g.dep_flight)||'—'}</td>
+      <td style="font-size:0.78rem;">${esc(g.dep_carrier)||'—'}</td>
+      <td style="font-size:0.78rem;">${esc(g.dep_to)||'—'}</td>
+      <td>${g.dep_terminal ? `<span class="terminal-badge">${g.dep_terminal}</span>` : '—'}</td>
+      <td class="td-name">${esc(g.name)}</td>
+      <td style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
+      <td style="font-size:0.78rem;">${esc(chapName(g.dep_chaperone_id))||'—'}</td>
+      <td style="font-size:0.78rem;">${esc(drvName(g.dep_driver_id))||'—'}</td>
+      <td style="font-size:0.75rem;color:var(--slate-light);">${esc(g.dep_remarks)||'—'}</td>
+    </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════
+//  MEALS VIEW
+// ═══════════════════════════════════════════
+function renderMeals() {
+  // Meal events list
+  const me = document.getElementById('mealEventsBody');
+  me.innerHTML = db.mealEvents.length ? db.mealEvents.map((m,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td><strong>${esc(m.name)}</strong></td>
+      <td>${fmtDate(m.date)}</td>
+      <td>${m.day||dayOfWeek(m.date)}</td>
+      <td>${fmtTime(m.time)}</td>
+      <td style="font-size:0.78rem;">${esc(m.venue)||'—'}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-outline btn-sm" onclick="editMealEvent(${i})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteMealEvent(${i})">🗑</button>
+      </td>
+    </tr>`).join('')
+    : '<tr><td colspan="7" style="text-align:center;color:var(--slate-light);padding:20px;">No meal events. Click "+ Add Meal" to create one.</td></tr>';
+
+  // Dietary table
+  const dt = document.getElementById('dietaryBody');
+  const withDietary = db.guests.filter(g => g.allergen||g.foodpref||g.bevhot||g.bevcold);
+  dt.innerHTML = withDietary.length ? withDietary.map((g,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td class="td-name">${esc(g.name)}</td>
+      <td><span class="pill pill-hotel">GUEST</span></td>
+      <td style="font-size:0.78rem; color:var(--red);">${esc(g.allergen)||'—'}</td>
+      <td style="font-size:0.78rem;">${esc(g.foodpref)||'—'}</td>
+      <td style="font-size:0.78rem;">${esc(g.bevhot)||'—'}</td>
+      <td style="font-size:0.78rem;">${esc(g.bevcold)||'—'}</td>
+    </tr>`).join('')
+    : '<tr><td colspan="7" style="text-align:center;color:var(--slate-light);padding:20px;">No dietary requirements recorded.</td></tr>';
+
+  // Meal attendance matrix
+  const header = document.getElementById('mealsMatrixHeader');
+  header.innerHTML = '<th>#</th><th>Guest</th><th>Role</th>' + db.mealEvents.map(m =>
+    `<th class="activity-option-header" style="min-width:90px;"><div>${esc(m.name)}</div><div style="font-weight:400;font-size:0.65rem;opacity:0.85;">${fmtDate(m.date)}</div><div style="font-weight:400;font-size:0.65rem;opacity:0.75;">${fmtTime(m.time)}</div></th>`
+  ).join('');
+
+  const matBody = document.getElementById('mealsMatrixBody');
+  const rows = [];
+  let rowIdx = 0;
+  db.guests.forEach(g => {
+    const validSpouse = g.spouse && g.spouse !== '-' && g.spouse !== '0' && g.spouse.trim();
+    const validAdditional = g.additional && g.additional.trim();
+    const groupSize = 1 + (validSpouse ? 1 : 0) + (validAdditional ? 1 : 0);
+
+    // Main guest row
+    const gCells = db.mealEvents.map((_,mi) => {
+      const att = g.mealAttendance && g.mealAttendance[mi];
+      return `<td class="meal-check" style="cursor:pointer;" onclick="toggleMealAtt(${g.id},'mealAttendance',${mi})" title="Click to toggle">
+        <span class="${att?'check-yes':'check-no'}">${att?'✓':'○'}</span></td>`;
+    }).join('');
+    rows.push(`<tr style="background:white;">
+      <td rowspan="${groupSize}" style="font-weight:700;text-align:center;border-right:2px solid var(--border);">${++rowIdx}</td>
+      <td class="td-name" style="font-weight:700;">${esc(g.name)}</td>
+      <td><span class="pill pill-hotel" style="font-size:0.65rem;">GUEST</span></td>
+      ${gCells}
+    </tr>`);
+
+    // Spouse row
+    if (validSpouse) {
+      const sCells = db.mealEvents.map((_,mi) => {
+        const att = g.mealSpouseAttendance && g.mealSpouseAttendance[mi];
+        return `<td class="meal-check" style="cursor:pointer;background:#fffdf7;" onclick="toggleMealAtt(${g.id},'mealSpouseAttendance',${mi})" title="Click to toggle">
+          <span class="${att?'check-yes':'check-no'}">${att?'✓':'○'}</span></td>`;
+      }).join('');
+      rows.push(`<tr style="background:#fffdf7;">
+        <td style="font-size:0.8rem; padding-left:18px; background:#fffdf7;">${esc(g.spouse)}</td>
+        <td style="background:#fffdf7;"><span class="pill pill-spouse" style="font-size:0.65rem;">SPOUSE</span></td>
+        ${sCells}
+      </tr>`);
+    }
+
+    // Additional guest row
+    if (validAdditional) {
+      const aCells = db.mealEvents.map((_,mi) => {
+        const att = g.mealAdditionalAttendance && g.mealAdditionalAttendance[mi];
+        return `<td class="meal-check" style="cursor:pointer;background:#f0f4ff;" onclick="toggleMealAtt(${g.id},'mealAdditionalAttendance',${mi})" title="Click to toggle">
+          <span class="${att?'check-yes':'check-no'}">${att?'✓':'○'}</span></td>`;
+      }).join('');
+      rows.push(`<tr style="background:#f0f4ff;">
+        <td style="font-size:0.8rem; padding-left:18px; background:#f0f4ff;">${esc(g.additional)}</td>
+        <td style="background:#f0f4ff;"><span class="pill pill-arrival" style="font-size:0.65rem;">ADDL</span></td>
+        ${aCells}
+      </tr>`);
+    }
+
+    // Separator row between guest groups
+    rows.push(`<tr><td colspan="${3 + db.mealEvents.length}" style="padding:0;background:var(--border);height:1px;"></td></tr>`);
+  });
+  matBody.innerHTML = rows.join('') || '<tr><td colspan="20" style="text-align:center;padding:20px;color:var(--slate-light);">No guests yet.</td></tr>';
+}
+
+function addMealEvent() {
+  document.getElementById('mealModalTitle').textContent = 'Add Meal Event';
+  ['mf_name','mf_date','mf_day','mf_time','mf_venue'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('mf_editIdx').value = '';
+  document.getElementById('mealModal').classList.add('open');
+}
+function editMealEvent(i) {
+  const m = db.mealEvents[i];
+  document.getElementById('mealModalTitle').textContent = 'Edit Meal Event';
+  document.getElementById('mf_name').value = m.name||'';
+  document.getElementById('mf_date').value = m.date||'';
+  document.getElementById('mf_day').value = m.day||'';
+  document.getElementById('mf_time').value = m.time||'';
+  document.getElementById('mf_venue').value = m.venue||'';
+  document.getElementById('mf_editIdx').value = i;
+  document.getElementById('mealModal').classList.add('open');
+}
+function saveMealEvent() {
+  const name = document.getElementById('mf_name').value.trim();
+  if (!name) { showToast('Meal name is required', 'error'); return; }
+  const meal = {
+    name, date: document.getElementById('mf_date').value,
+    day: document.getElementById('mf_day').value.trim(),
+    time: document.getElementById('mf_time').value,
+    venue: document.getElementById('mf_venue').value.trim()
+  };
+  const idx = document.getElementById('mf_editIdx').value;
+  if (idx !== '') { db.mealEvents[parseInt(idx)] = meal; }
+  else { db.mealEvents.push(meal); db.guests.forEach(g => {
+    if (!g.mealAttendance) g.mealAttendance=[];
+    g.mealAttendance.push(false);
+    if (!g.mealSpouseAttendance) g.mealSpouseAttendance=[];
+    g.mealSpouseAttendance.push(false);
+    if (!g.mealAdditionalAttendance) g.mealAdditionalAttendance=[];
+    g.mealAdditionalAttendance.push(false);
+  }); }
+  saveDB(); closeModal('mealModal'); renderMeals();
+  showToast('✓ Meal event saved', 'success');
+}
+function deleteMealEvent(i) {
+  if (!confirm('Remove this meal event?')) return;
+  db.mealEvents.splice(i,1);
+  db.guests.forEach(g => {
+    if (g.mealAttendance) g.mealAttendance.splice(i,1);
+    if (g.mealSpouseAttendance) g.mealSpouseAttendance.splice(i,1);
+    if (g.mealAdditionalAttendance) g.mealAdditionalAttendance.splice(i,1);
+  });
+  saveDB(); renderMeals();
+}
+
+// ═══════════════════════════════════════════
+//  ACTIVITIES VIEW
+// ═══════════════════════════════════════════
+function renderActivities() {
+  const opts = document.getElementById('activityOptionsEditor');
+  opts.innerHTML = db.activityOptions.length ? db.activityOptions.map((a,i) => `
+    <div style="background:white;border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;min-width:220px;max-width:280px;flex:1;">
+      <div style="font-weight:700;font-size:0.88rem;margin-bottom:4px;">${esc(a.name)}</div>
+      <div style="font-size:0.74rem;color:var(--slate-light);margin-bottom:6px;">${fmtDate(a.date)} ${fmtTime(a.time)}</div>
+      ${a.location ? `<div style="font-size:0.72rem;color:var(--slate);margin-bottom:4px;">📍 ${esc(a.location)}</div>` : ''}
+      ${a.desc ? `<div style="font-size:0.74rem;color:var(--slate);">${esc(a.desc)}</div>` : ''}
+      <div style="display:flex;gap:6px;margin-top:10px;">
+        <button class="btn btn-outline btn-sm" onclick="editActivityOption(${i})">✏️ Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteActivityOption(${i})">🗑</button>
+      </div>
+    </div>`).join('')
+    : '<div style="color:var(--slate-light);font-size:0.82rem;padding:10px;">No activity options yet. Click "+ Add Option" to create one.</div>';
+
+  // Matrix
+  const header = document.getElementById('activityMatrixHeader');
+  header.innerHTML = '<th>#</th><th>Name</th><th>Role</th>' + db.activityOptions.map(a =>
+    `<th class="activity-option-header" style="min-width:110px;"><div>${esc(a.name)}</div><div style="font-weight:400;font-size:0.65rem;opacity:0.85;">${fmtDate(a.date)}</div></th>`
+  ).join('');
+
+  const matBody = document.getElementById('activityMatrixBody');
+  const rows = [];
+  let rowIdx = 0;
+  db.guests.forEach(g => {
+    const validSpouse = g.spouse && g.spouse !== '-' && g.spouse !== '0' && g.spouse.trim();
+    const validAdditional = g.additional && g.additional.trim();
+    const groupSize = 1 + (validSpouse ? 1 : 0) + (validAdditional ? 1 : 0);
+
+    const gCells = db.activityOptions.map((_,ai) => {
+      const att = g.activityAttendance && g.activityAttendance[ai];
+      return `<td class="meal-check" style="cursor:pointer;" onclick="toggleActAtt(${g.id},'activityAttendance',${ai})" title="Click to toggle">
+        <span class="${att?'check-yes':'check-no'}">${att?'✓':'○'}</span></td>`;
+    }).join('');
+    rows.push(`<tr style="background:white;">
+      <td rowspan="${groupSize}" style="font-weight:700;text-align:center;border-right:2px solid var(--border);">${++rowIdx}</td>
+      <td class="td-name" style="font-weight:700;">${esc(g.name)}</td>
+      <td><span class="pill pill-hotel" style="font-size:0.65rem;">GUEST</span></td>
+      ${gCells}
+    </tr>`);
+
+    if (validSpouse) {
+      const sCells = db.activityOptions.map((_,ai) => {
+        const att = g.activitySpouseAttendance && g.activitySpouseAttendance[ai];
+        return `<td class="meal-check" style="cursor:pointer;background:#fffdf7;" onclick="toggleActAtt(${g.id},'activitySpouseAttendance',${ai})" title="Click to toggle">
+          <span class="${att?'check-yes':'check-no'}">${att?'✓':'○'}</span></td>`;
+      }).join('');
+      rows.push(`<tr style="background:#fffdf7;">
+        <td style="font-size:0.8rem;padding-left:18px;background:#fffdf7;">${esc(g.spouse)}</td>
+        <td style="background:#fffdf7;"><span class="pill pill-spouse" style="font-size:0.65rem;">SPOUSE</span></td>
+        ${sCells}
+      </tr>`);
+    }
+
+    if (validAdditional) {
+      const aCells = db.activityOptions.map((_,ai) => {
+        const att = g.activityAdditionalAttendance && g.activityAdditionalAttendance[ai];
+        return `<td class="meal-check" style="cursor:pointer;background:#f0f4ff;" onclick="toggleActAtt(${g.id},'activityAdditionalAttendance',${ai})" title="Click to toggle">
+          <span class="${att?'check-yes':'check-no'}">${att?'✓':'○'}</span></td>`;
+      }).join('');
+      rows.push(`<tr style="background:#f0f4ff;">
+        <td style="font-size:0.8rem;padding-left:18px;background:#f0f4ff;">${esc(g.additional)}</td>
+        <td style="background:#f0f4ff;"><span class="pill pill-arrival" style="font-size:0.65rem;">ADDL</span></td>
+        ${aCells}
+      </tr>`);
+    }
+
+    rows.push(`<tr><td colspan="${3 + db.activityOptions.length}" style="padding:0;background:var(--border);height:1px;"></td></tr>`);
+  });
+  matBody.innerHTML = rows.join('') || `<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--slate-light);">No guests yet.</td></tr>`;
+}
+
+function addActivityOption() {
+  document.getElementById('actModalTitle').textContent = 'Add Activity Option';
+  ['af_name','af_date','af_time','af_location','af_desc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('af_editIdx').value = '';
+  document.getElementById('activityModal').classList.add('open');
+}
+function editActivityOption(i) {
+  const a = db.activityOptions[i];
+  document.getElementById('actModalTitle').textContent = 'Edit Activity';
+  document.getElementById('af_name').value = a.name||'';
+  document.getElementById('af_date').value = a.date||'';
+  document.getElementById('af_time').value = a.time||'';
+  document.getElementById('af_location').value = a.location||'';
+  document.getElementById('af_desc').value = a.desc||'';
+  document.getElementById('af_editIdx').value = i;
+  document.getElementById('activityModal').classList.add('open');
+}
+function saveActivityOption() {
+  const name = document.getElementById('af_name').value.trim();
+  if (!name) { showToast('Activity name is required', 'error'); return; }
+  const opt = { name, date: document.getElementById('af_date').value, time: document.getElementById('af_time').value, location: document.getElementById('af_location').value.trim(), desc: document.getElementById('af_desc').value.trim() };
+  const idx = document.getElementById('af_editIdx').value;
+  if (idx !== '') { db.activityOptions[parseInt(idx)] = opt; }
+  else { db.activityOptions.push(opt); db.guests.forEach(g => {
+    if (!g.activityAttendance) g.activityAttendance=[];
+    g.activityAttendance.push(false);
+    if (!g.activitySpouseAttendance) g.activitySpouseAttendance=[];
+    g.activitySpouseAttendance.push(false);
+    if (!g.activityAdditionalAttendance) g.activityAdditionalAttendance=[];
+    g.activityAdditionalAttendance.push(false);
+  }); }
+  saveDB(); closeModal('activityModal'); renderActivities();
+  showToast('✓ Activity saved', 'success');
+}
+function deleteActivityOption(i) {
+  if (!confirm('Remove this activity option?')) return;
+  db.activityOptions.splice(i,1);
+  db.guests.forEach(g => {
+    if (g.activityAttendance) g.activityAttendance.splice(i,1);
+    if (g.activitySpouseAttendance) g.activitySpouseAttendance.splice(i,1);
+    if (g.activityAdditionalAttendance) g.activityAdditionalAttendance.splice(i,1);
+  });
+  saveDB(); renderActivities();
+}
+
+// ═══════════════════════════════════════════
+//  INLINE TOGGLE HELPERS (matrix click-to-toggle)
+// ═══════════════════════════════════════════
+function toggleMealAtt(guestId, field, idx) {
+  const g = db.guests.find(x => x.id === guestId);
+  if (!g) return;
+  if (!g[field]) g[field] = db.mealEvents.map(() => false);
+  g[field][idx] = !g[field][idx];
+  saveDB(); renderMeals();
+}
+function toggleActAtt(guestId, field, idx) {
+  const g = db.guests.find(x => x.id === guestId);
+  if (!g) return;
+  if (!g[field]) g[field] = db.activityOptions.map(() => false);
+  g[field][idx] = !g[field][idx];
+  saveDB(); renderActivities();
+}
+function renderEvents() {
+  const body = document.getElementById('eventsBody');
+  const dayColors = { D1:'day-d1', D2:'day-d2', D3:'day-d3', D4:'day-d4', D5:'day-d5' };
+  body.innerHTML = db.events.map((ev,i) => {
+    const dc = dayColors[ev.dayref] || '';
+    return `<tr>
+      <td>${fmtDate(ev.date)}</td>
+      <td>${ev.day||dayOfWeek(ev.date)}</td>
+      <td class="td-time">${fmtTime(ev.start)}</td>
+      <td>${ev.dayref ? `<span class="event-day-badge ${dc}">${ev.dayref}</span>` : '—'}</td>
+      <td><span class="pill pill-hotel">${esc(ev.type)}</span></td>
+      <td style="font-size:0.82rem;max-width:300px;">${esc(ev.desc)}</td>
+      <td style="font-size:0.78rem;">${esc(ev.presenter)||'—'}</td>
+      <td style="font-size:0.78rem;">${esc(ev.respondent)||'—'}</td>
+      <td style="font-size:0.78rem;">${esc(ev.location)||'—'}</td>
+      <td style="font-size:0.78rem;">${esc(ev.chaperone)||'—'}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-outline btn-sm" onclick="editEventRow(${i})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteEventRow(${i})">🗑</button>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--slate-light);">No events yet.</td></tr>';
+}
+function addEventRow() {
+  document.getElementById('evModalTitle').textContent = 'Add Event';
+  ['ef_date','ef_day','ef_start','ef_dayref','ef_presenter','ef_respondent','ef_desc','ef_location','ef_chaperone'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('ef_type').value = 'Session';
+  document.getElementById('ef_editIdx').value = '';
+  document.getElementById('eventModal').classList.add('open');
+}
+function editEventRow(i) {
+  const ev = db.events[i];
+  document.getElementById('evModalTitle').textContent = 'Edit Event';
+  document.getElementById('ef_date').value = ev.date||'';
+  document.getElementById('ef_day').value = ev.day||'';
+  document.getElementById('ef_start').value = ev.start||'';
+  document.getElementById('ef_dayref').value = ev.dayref||'';
+  document.getElementById('ef_type').value = ev.type||'Session';
+  document.getElementById('ef_presenter').value  = ev.presenter||'';
+  document.getElementById('ef_respondent').value = ev.respondent||'';
+  document.getElementById('ef_desc').value       = ev.desc||'';
+  document.getElementById('ef_location').value = ev.location||'';
+  document.getElementById('ef_chaperone').value = ev.chaperone||'';
+  document.getElementById('ef_editIdx').value = i;
+  document.getElementById('eventModal').classList.add('open');
+}
+function saveEventRow() {
+  const ev = {
+    date: document.getElementById('ef_date').value, day: document.getElementById('ef_day').value.trim(),
+    start: document.getElementById('ef_start').value, dayref: document.getElementById('ef_dayref').value.trim(),
+    type: document.getElementById('ef_type').value, presenter: document.getElementById('ef_presenter').value.trim(),
+    respondent: document.getElementById('ef_respondent').value.trim(),
+    desc: document.getElementById('ef_desc').value.trim(), location: document.getElementById('ef_location').value.trim(),
+    chaperone: document.getElementById('ef_chaperone').value.trim()
+  };
+  const idx = document.getElementById('ef_editIdx').value;
+  if (idx !== '') db.events[parseInt(idx)] = ev; else db.events.push(ev);
+  saveDB(); closeModal('eventModal'); renderEvents();
+  showToast('✓ Event saved', 'success');
+}
+function deleteEventRow(i) {
+  if (!confirm('Remove this event?')) return;
+  db.events.splice(i,1); saveDB(); renderEvents();
+}
+
+// ═══════════════════════════════════════════
+//  HOTEL VIEW
+// ═══════════════════════════════════════════
+function renderHotel() {
+  const body = document.getElementById('hotelBody');
+  body.innerHTML = db.guests.filter(g => g.hotel||g.checkin).map((g,i) => {
+    let nights = '—';
+    if (g.checkin && g.checkout) {
+      const diff = (new Date(g.checkout) - new Date(g.checkin)) / 86400000;
+      nights = diff > 0 ? diff : '—';
+    }
+    return `<tr>
+      <td>${i+1}</td>
+      <td class="td-name">${esc(g.name)}</td>
+      <td style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
+      <td>${esc(g.hotel)||'—'}</td>
+      <td>${esc(g.room)||'—'}</td>
+      <td>${fmtDate(g.arr_date)}<br><span style="font-size:0.72rem;color:var(--slate-light);">${fmtTime(g.arr_time)}</span></td>
+      <td>${fmtDate(g.checkin)||'—'}</td>
+      <td>${fmtDate(g.dep_date)}<br><span style="font-size:0.72rem;color:var(--slate-light);">${fmtTime(g.dep_time)}</span></td>
+      <td>${fmtDate(g.checkout)||'—'}</td>
+      <td><strong>${nights}</strong></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--slate-light);">No hotel data yet.</td></tr>';
+}
+
+// ═══════════════════════════════════════════
+//  CHAPERONE / DRIVER HELPERS
+// ═══════════════════════════════════════════
+function chapName(id) {
+  if (!id && id !== 0) return '—';
+  const c = db.chaperones.find(x => x.id === id || x.id === parseInt(id));
+  return c ? c.name : (id ? String(id) : '—');
+}
+function drvName(id) {
+  if (!id && id !== 0) return '—';
+  const d = db.drivers.find(x => x.id === id || x.id === parseInt(id));
+  return d ? d.name : (id ? String(id) : '—');
+}
+function drvInfo(id) {
+  if (!id) return { plate:'', car:'', color:'' };
+  const d = db.drivers.find(x => x.id === id || x.id === parseInt(id));
+  return d ? { plate: d.plate||'', car: d.car||'', color: d.color||'' } : { plate:'', car:'', color:'' };
+}
+
+function populateChaperoneDriverSelects() {
+  const blankOpt = '<option value="">— None —</option>';
+  const chapOpts = blankOpt + db.chaperones.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  const drvOpts  = blankOpt + db.drivers.map(d => `<option value="${d.id}">${esc(d.name)}${d.car?' — '+d.car:''}</option>`).join('');
+  ['arr','dep'].forEach(leg => {
+    const cs = document.getElementById(`f_${leg}_chaperone_id`);
+    const ds = document.getElementById(`f_${leg}_driver_id`);
+    if (cs) cs.innerHTML = chapOpts;
+    if (ds) ds.innerHTML = drvOpts;
+  });
+}
+
+function syncChaperoneName(leg) { /* name is display-only; nothing extra needed */ }
+
+function syncDriverFields(leg) {
+  const sel = document.getElementById(`f_${leg}_driver_id`);
+  if (!sel) return;
+  const info = drvInfo(parseInt(sel.value));
+  const plate = document.getElementById(`f_${leg}_plate`);
+  const car   = document.getElementById(`f_${leg}_car`);
+  const color = document.getElementById(`f_${leg}_color`);
+  if (plate && !plate.value) plate.value = info.plate;
+  if (car   && !car.value)   car.value   = info.car;
+  if (color && !color.value) color.value = info.color;
+}
+
+// ═══════════════════════════════════════════
+//  CHAPERONE VIEW
+// ═══════════════════════════════════════════
+function renderChaperones() {
+  const body = document.getElementById('chaperoneBody');
+  body.innerHTML = db.chaperones.map((c, i) => {
+    const assigned = db.guests.filter(g =>
+      g.arr_chaperone_id == c.id || g.dep_chaperone_id == c.id
+    ).map(g => esc(g.name)).join(', ') || '—';
+    const statusColor = c.status === 'Assigned' ? 'var(--green)' : c.status === 'Unavailable' ? 'var(--red)' : 'var(--slate-light)';
+    return `<tr>
+      <td>${i+1}</td>
+      <td class="td-name">${esc(c.name)}</td>
+      <td style="font-size:0.78rem;">${esc(c.contact)||'—'}</td>
+      <td style="font-size:0.78rem;">${esc(c.remark)||'—'}</td>
+      <td style="font-size:0.78rem; max-width:240px;">${assigned}</td>
+      <td><span style="font-size:0.72rem;font-weight:700;color:${statusColor};">${esc(c.status)}</span></td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-outline btn-sm" onclick="editChaperone(${c.id})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteChaperone(${c.id})">🗑</button>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--slate-light);">No chaperones yet.</td></tr>';
+}
+
+function addChaperone() {
+  document.getElementById('chapModalTitle').textContent = 'Add Chaperone';
+  ['ch_name','ch_contact','ch_remark'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ch_status').value = 'Available';
+  document.getElementById('ch_editId').value = '';
+  document.getElementById('chaperoneModal').classList.add('open');
+}
+function editChaperone(id) {
+  const c = db.chaperones.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('chapModalTitle').textContent = 'Edit Chaperone';
+  document.getElementById('ch_name').value    = c.name||'';
+  document.getElementById('ch_contact').value = c.contact||'';
+  document.getElementById('ch_remark').value  = c.remark||'';
+  document.getElementById('ch_status').value  = c.status||'Available';
+  document.getElementById('ch_editId').value  = c.id;
+  document.getElementById('chaperoneModal').classList.add('open');
+}
+function saveChaperone() {
+  const name = document.getElementById('ch_name').value.trim();
+  if (!name) { showToast('Name is required', 'error'); return; }
+  const obj = {
+    name, contact: document.getElementById('ch_contact').value.trim(),
+    remark: document.getElementById('ch_remark').value.trim(),
+    status: document.getElementById('ch_status').value
+  };
+  const editId = document.getElementById('ch_editId').value;
+  if (editId) {
+    const idx = db.chaperones.findIndex(x => x.id === parseInt(editId));
+    if (idx >= 0) { obj.id = parseInt(editId); db.chaperones[idx] = obj; }
+  } else {
+    obj.id = Date.now();
+    db.chaperones.push(obj);
+  }
+  saveDB(); closeModal('chaperoneModal'); renderChaperones();
+  showToast('✓ Chaperone saved', 'success');
+}
+function deleteChaperone(id) {
+  if (!confirm('Remove this chaperone?')) return;
+  db.chaperones = db.chaperones.filter(x => x.id !== id);
+  db.guests.forEach(g => {
+    if (g.arr_chaperone_id == id) g.arr_chaperone_id = '';
+    if (g.dep_chaperone_id == id) g.dep_chaperone_id = '';
+  });
+  saveDB(); renderChaperones();
+}
+
+// ═══════════════════════════════════════════
+//  DRIVER VIEW
+// ═══════════════════════════════════════════
+function renderDrivers() {
+  const body = document.getElementById('driverBody');
+  body.innerHTML = db.drivers.map((d, i) => {
+    const assigned = db.guests.filter(g =>
+      g.arr_driver_id == d.id || g.dep_driver_id == d.id
+    ).map(g => esc(g.name)).join(', ') || '—';
+    const statusColor = d.status === 'Assigned' ? 'var(--green)' : d.status === 'Unavailable' ? 'var(--red)' : 'var(--slate-light)';
+    return `<tr>
+      <td>${i+1}</td>
+      <td class="td-name">${esc(d.name)}</td>
+      <td style="font-size:0.78rem;">${esc(d.contact)||'—'}</td>
+      <td><code style="font-size:0.78rem;">${esc(d.plate)||'—'}</code></td>
+      <td style="font-size:0.78rem;">${esc(d.car)||'—'}</td>
+      <td style="font-size:0.78rem;">${esc(d.color)||'—'}</td>
+      <td style="font-size:0.75rem;color:var(--slate-light);">${esc(d.remark)||'—'}</td>
+      <td style="font-size:0.78rem;max-width:220px;">${assigned}</td>
+      <td><span style="font-size:0.72rem;font-weight:700;color:${statusColor};">${esc(d.status)}</span></td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-outline btn-sm" onclick="editDriver(${d.id})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteDriver(${d.id})">🗑</button>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--slate-light);">No drivers yet.</td></tr>';
+}
+
+function addDriver() {
+  document.getElementById('drvModalTitle').textContent = 'Add Driver';
+  ['dr_name','dr_contact','dr_plate','dr_car','dr_color','dr_remark'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('dr_status').value = 'Free';
+  document.getElementById('dr_editId').value = '';
+  document.getElementById('driverModal').classList.add('open');
+}
+function editDriver(id) {
+  const d = db.drivers.find(x => x.id === id);
+  if (!d) return;
+  document.getElementById('drvModalTitle').textContent = 'Edit Driver';
+  document.getElementById('dr_name').value    = d.name||'';
+  document.getElementById('dr_contact').value = d.contact||'';
+  document.getElementById('dr_plate').value   = d.plate||'';
+  document.getElementById('dr_car').value     = d.car||'';
+  document.getElementById('dr_color').value   = d.color||'';
+  document.getElementById('dr_remark').value  = d.remark||'';
+  document.getElementById('dr_status').value  = d.status||'Free';
+  document.getElementById('dr_editId').value  = d.id;
+  document.getElementById('driverModal').classList.add('open');
+}
+function saveDriver() {
+  const name = document.getElementById('dr_name').value.trim();
+  if (!name) { showToast('Name is required', 'error'); return; }
+  const obj = {
+    name, contact: document.getElementById('dr_contact').value.trim(),
+    plate: document.getElementById('dr_plate').value.trim(),
+    car:   document.getElementById('dr_car').value.trim(),
+    color: document.getElementById('dr_color').value.trim(),
+    remark: document.getElementById('dr_remark').value.trim(),
+    status: document.getElementById('dr_status').value
+  };
+  const editId = document.getElementById('dr_editId').value;
+  if (editId) {
+    const idx = db.drivers.findIndex(x => x.id === parseInt(editId));
+    if (idx >= 0) { obj.id = parseInt(editId); db.drivers[idx] = obj; }
+  } else {
+    obj.id = Date.now();
+    db.drivers.push(obj);
+  }
+  saveDB(); closeModal('driverModal'); renderDrivers();
+  showToast('✓ Driver saved', 'success');
+}
+function deleteDriver(id) {
+  if (!confirm('Remove this driver?')) return;
+  db.drivers = db.drivers.filter(x => x.id !== id);
+  db.guests.forEach(g => {
+    if (g.arr_driver_id == id) g.arr_driver_id = '';
+    if (g.dep_driver_id == id) g.dep_driver_id = '';
+  });
+  saveDB(); renderDrivers();
+}
+
+// ═══════════════════════════════════════════
+//  CLOSE MODAL ON OVERLAY CLICK
+// ═══════════════════════════════════════════
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ═══════════════════════════════════════════
+//  INIT — Firebase async bootstrap
+// ═══════════════════════════════════════════
+(async () => {
+  try {
+    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const { getFirestore }  = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyDiTiQE86w-pf6oGzoCgYyXBawn_OHYKas",
+      authDomain:        "aps2026-642ce.firebaseapp.com",
+      projectId:         "aps2026-642ce",
+      storageBucket:     "aps2026-642ce.firebasestorage.app",
+      messagingSenderId: "599304778384",
+      appId:             "1:599304778384:web:a5c72f51c20ea2fdc79e15"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const fsDb = getFirestore(app);
+    _setFirestore(fsDb);
+    loadDB();
+    await _loadFromFirestore();
+
+  } catch(e) {
+    console.error('Firebase init failed, falling back to localStorage:', e);
+    _loadLocalFallback();
+    migrateDB();
+    renderGuestList();
+  }
+})();
+</script>
+</body>
+</html>
