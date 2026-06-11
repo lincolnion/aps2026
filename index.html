@@ -907,24 +907,13 @@
       <!-- MEALS & PREFERENCES -->
       <div class="card">
         <div class="card-title">🍽️ Dietary & Preferences</div>
-        <div class="form-grid form-grid-2">
-          <div class="form-group full-width">
-            <label>Food Allergen / Dislike</label>
-            <textarea id="f_allergen" placeholder="e.g. No Tofu, Small seeds; no kiwi…" rows="2"></textarea>
-          </div>
-          <div class="form-group full-width">
-            <label>Food Preference</label>
-            <textarea id="f_foodpref" placeholder="e.g. White meat, fish or chicken; Green Veg…" rows="2"></textarea>
-          </div>
-          <div class="form-group">
-            <label>Preferred Hot Beverage</label>
-            <input type="text" id="f_bevhot" placeholder="e.g. Coffee, Tea">
-          </div>
-          <div class="form-group">
-            <label>Preferred Cold Beverage</label>
-            <input type="text" id="f_bevcold" placeholder="e.g. Sparkling water, Fresh juice">
-          </div>
+        <div style="font-size:0.78rem;color:var(--slate-light);margin-bottom:14px;">
+          Fill dietary info separately for each person attending. Sections appear automatically as you add a spouse or additional guests above.
         </div>
+        <div id="dietaryPerPersonWrap" style="display:flex;flex-direction:column;gap:20px;"></div>
+        <!-- Hidden legacy fields kept for migration compatibility -->
+        <input type="hidden" id="f_allergen"><input type="hidden" id="f_foodpref">
+        <input type="hidden" id="f_bevhot"><input type="hidden" id="f_bevcold">
         <!-- Meal attendance -->
         <div style="margin-top:18px; border-top:1px solid var(--border); padding-top:14px;">
           <label style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--slate); display:block; margin-bottom:12px;">Meal Attendance</label>
@@ -1081,7 +1070,7 @@
       <div class="card-title">Dietary Requirements & Beverage Preferences</div>
       <div class="table-wrapper">
         <table>
-          <thead><tr><th>#</th><th>Name</th><th>Role</th><th>Allergen / Dislike</th><th>Food Preference</th><th>Hot Beverage</th><th>Cold Beverage</th></tr></thead>
+          <thead><tr><th>#</th><th>Name</th><th>Role</th><th>Allergen / Dislike</th><th>Food Preference</th><th>Hot Bev</th><th>Cold Bev</th><th style="color:#e65100;">Server Note</th><th></th></tr></thead>
           <tbody id="dietaryBody"></tbody>
         </table>
       </div>
@@ -1279,8 +1268,8 @@
       </div>
     </div>
 
-    <!-- Table detail panel -->
-    <div id="seatingTableDetail" style="display:none;margin-top:14px;"></div>
+    <!-- All-tables summary (always visible when tables exist) -->
+    <div id="seatingTableDetail" style="margin-top:18px;"></div>
 
   </div>
 
@@ -1748,6 +1737,15 @@ function migrateDB() {
     if (!g.room2)     g.room2     = '';
     if (!g.checkin2)  g.checkin2  = '';
     if (!g.checkout2) g.checkout2 = '';
+    // Migrate legacy single dietary fields → dietaryInfo[0]
+    if (!g.dietaryInfo) {
+      g.dietaryInfo = [{
+        allergen: g.allergen || '',
+        foodpref: g.foodpref || '',
+        bevhot:   g.bevhot   || '',
+        bevcold:  g.bevcold  || ''
+      }];
+    }
   });
   (db.events||[]).forEach(ev => { if (!ev.respondent) ev.respondent = ''; });
 }
@@ -1832,12 +1830,12 @@ function _toFirestore(data) {
     d.mealHosts = mh;
   }
 
-  // ── checkinLog: pipe chars in keys → replace | with __ ──────────────────
+  // ── checkinLog: pipe | chars in keys → replace with ~~~ (safe separator) ──
   // Firestore does not allow | in field names
   if (d.checkinLog) {
     const cl = {};
     Object.keys(d.checkinLog).forEach(k => {
-      cl[k.replace(/\|/g, '__')] = d.checkinLog[k];
+      cl[k.replace(/\|/g, '~~~')] = d.checkinLog[k];
     });
     d.checkinLog = cl;
   }
@@ -1883,11 +1881,12 @@ function _fromFirestore(data) {
     data.mealHosts = mh;
   }
 
-  // ── checkinLog: __ → | ───────────────────────────────────────────────────
+  // ── checkinLog: ~~~ → | ─────────────────────────────────────────────────
   if (data.checkinLog) {
     const cl = {};
     Object.keys(data.checkinLog).forEach(k => {
-      cl[k.replace(/__/g, '|')] = data.checkinLog[k];
+      // Handle both old __ encoding and new ~~~ encoding
+      cl[k.replace(/~~~/g, '|').replace(/__/g, '|')] = data.checkinLog[k];
     });
     data.checkinLog = cl;
   }
@@ -2550,15 +2549,36 @@ function openGuestModal(id) {
         ${g.respond2 ? `<div class="info-item"><label>Respondent 2</label><span>${esc(g.respond2)}</span></div>` : ''}
       </div>
     </div>` : ''}
-    ${(g.allergen||g.foodpref||g.bevhot||g.bevcold) ? `<div class="modal-section">
-      <div class="modal-section-title">🍽️ Dietary</div>
-      <div class="info-grid">
-        ${g.allergen ? `<div class="info-item" style="grid-column:1/-1"><label>Allergen / Dislike</label><span>${esc(g.allergen)}</span></div>` : ''}
-        ${g.foodpref ? `<div class="info-item" style="grid-column:1/-1"><label>Food Preference</label><span>${esc(g.foodpref)}</span></div>` : ''}
-        ${g.bevhot ? `<div class="info-item"><label>Hot Beverage</label><span>${esc(g.bevhot)}</span></div>` : ''}
-        ${g.bevcold ? `<div class="info-item"><label>Cold Beverage</label><span>${esc(g.bevcold)}</span></div>` : ''}
-      </div>
-    </div>` : ''}
+    ${(() => {
+      const spouseValid = g.spouse && g.spouse!=='-' && g.spouse!=='0' && g.spouse.trim();
+      const addlPeople  = (g.additionalGuests||[]).filter(a=>a.name&&a.name.trim());
+      const persons = [{name:g.name,role:'Guest',idx:0}];
+      if(spouseValid) persons.push({name:g.spouse,role:'Spouse',idx:1});
+      addlPeople.forEach((ag,pi)=>persons.push({name:ag.name,role:ag.relation||'Addl Guest',idx:2+pi}));
+      const rows = persons.map(({name,role,idx})=>{
+        const di=(g.dietaryInfo||[])[idx]||{};
+        const al=di.allergen||(idx===0?g.allergen||'':'');
+        const fp=di.foodpref||(idx===0?g.foodpref||'':'');
+        const bh=di.bevhot  ||(idx===0?g.bevhot  ||'':'');
+        const bc=di.bevcold ||(idx===0?g.bevcold ||'':'');
+        const rm=di.remark  ||'';
+        if(!al&&!fp&&!bh&&!bc&&!rm) return '';
+        return `<div class="info-item" style="grid-column:1/-1;background:var(--ivory);border-radius:8px;padding:10px 12px;">
+          <label style="color:var(--gold);font-size:0.7rem;margin-bottom:4px;">${esc(name)} · ${esc(role)}</label>
+          <span style="display:flex;flex-direction:column;gap:3px;">
+            ${al?`<span style="font-size:0.78rem;color:var(--red);">⚠ ${esc(al)}</span>`:''}
+            ${fp?`<span style="font-size:0.78rem;">Prefers: ${esc(fp)}</span>`:''}
+            ${bh?`<span style="font-size:0.78rem;">☕ ${esc(bh)}</span>`:''}
+            ${bc?`<span style="font-size:0.78rem;">🥤 ${esc(bc)}</span>`:''}
+            ${rm?`<span style="font-size:0.78rem;color:#e65100;font-weight:600;background:#fff3e0;border:1px solid rgba(230,81,0,0.3);border-radius:5px;padding:3px 8px;margin-top:2px;">⚑ ${esc(rm)}</span>`:''}
+          </span>
+        </div>`;
+      }).filter(Boolean).join('');
+      return rows ? `<div class="modal-section">
+        <div class="modal-section-title">🍽️ Dietary & Preferences</div>
+        <div class="info-grid">${rows}</div>
+      </div>` : '';
+    })()}
     ${mealNames.length ? `<div class="modal-section">
       <div class="modal-section-title">🍽️ Meal Attendance</div>
       <div style="display:flex; flex-wrap:wrap; gap:8px;">
@@ -2605,8 +2625,92 @@ function cbRow(prefix, items, type) {
   }).join('');
 }
 
+function renderDietaryPerPerson() {
+  const wrap = document.getElementById('dietaryPerPersonWrap');
+  if (!wrap) return;
+
+  const spouseName = document.getElementById('f_spouse')?.value.trim() || '';
+  const hasSpouse  = spouseName && spouseName !== '-' && spouseName !== '0';
+  const addlPeople = _currentAdditionalGuests.filter(a => a.name && a.name.trim());
+
+  // Build list of people: [{label, roleColor, idx}]
+  // idx 0 = main guest, 1 = spouse, 2+ = additional guests
+  const people = [];
+  const guestName = document.getElementById('f_name')?.value.trim() || 'Main Guest';
+  people.push({ label: guestName || 'Main Guest', role: 'GUEST', roleColor: 'var(--navy)', idx: 0 });
+  if (hasSpouse) people.push({ label: spouseName, role: 'SPOUSE', roleColor: 'var(--gold)', idx: 1 });
+  addlPeople.forEach((ag, pi) => {
+    people.push({ label: ag.name, role: ag.relation || 'ADDL', roleColor: 'var(--blue)', idx: 2 + pi });
+  });
+
+  wrap.innerHTML = people.map(({ label, role, roleColor, idx }) => `
+    <div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;background:var(--ivory);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="background:${roleColor};color:white;font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:0.05em;">${esc(role)}</span>
+        <span style="font-weight:700;font-size:0.88rem;color:var(--navy);">${esc(label)}</span>
+      </div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group full-width">
+          <label>Food Allergen / Dislike</label>
+          <textarea id="f_diet_allergen_${idx}" rows="2" placeholder="e.g. No seafood, no nuts…"
+            style="font-size:0.82rem;">${esc(_getDietaryVal(idx, 'allergen'))}</textarea>
+        </div>
+        <div class="form-group full-width">
+          <label>Food Preference</label>
+          <textarea id="f_diet_foodpref_${idx}" rows="2" placeholder="e.g. White meat, no pork…"
+            style="font-size:0.82rem;">${esc(_getDietaryVal(idx, 'foodpref'))}</textarea>
+        </div>
+        <div class="form-group">
+          <label>Hot Beverage</label>
+          <input type="text" id="f_diet_bevhot_${idx}" value="${esc(_getDietaryVal(idx, 'bevhot'))}"
+            placeholder="e.g. Coffee, Tea" style="font-size:0.82rem;">
+        </div>
+        <div class="form-group">
+          <label>Cold Beverage</label>
+          <input type="text" id="f_diet_bevcold_${idx}" value="${esc(_getDietaryVal(idx, 'bevcold'))}"
+            placeholder="e.g. Sparkling water" style="font-size:0.82rem;">
+        </div>
+        <div class="form-group full-width">
+          <label style="display:flex;align-items:center;gap:8px;">
+            Server / Host Note
+            <span style="background:#e65100;color:white;font-size:0.62rem;font-weight:700;padding:1px 7px;border-radius:4px;">FOR SERVERS</span>
+          </label>
+          <input type="text" id="f_diet_remark_${idx}" value="${esc(_getDietaryVal(idx, 'remark'))}"
+            placeholder="e.g. No red meat – very strict. Keep away from shellfish."
+            style="font-size:0.82rem;border-color:rgba(230,81,0,0.35);">
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// Temporary store for dietary data while form is open
+let _currentDietaryInfo = []; // array of {allergen, foodpref, bevhot, bevcold}
+
+function _getDietaryVal(idx, field) {
+  return (_currentDietaryInfo[idx] || {})[field] || '';
+}
+
+function getDietaryFromForm() {
+  const spouseName = document.getElementById('f_spouse')?.value.trim() || '';
+  const hasSpouse  = spouseName && spouseName !== '-' && spouseName !== '0';
+  const addlPeople = _currentAdditionalGuests.filter(a => a.name && a.name.trim());
+  const count = 1 + (hasSpouse ? 1 : 0) + addlPeople.length;
+  const result = [];
+  for (let i = 0; i < count; i++) {
+    result.push({
+      allergen: document.getElementById(`f_diet_allergen_${i}`)?.value.trim() || '',
+      foodpref: document.getElementById(`f_diet_foodpref_${i}`)?.value.trim() || '',
+      bevhot:   document.getElementById(`f_diet_bevhot_${i}`)?.value.trim()   || '',
+      bevcold:  document.getElementById(`f_diet_bevcold_${i}`)?.value.trim()  || '',
+      remark:   document.getElementById(`f_diet_remark_${i}`)?.value.trim()   || '',
+    });
+  }
+  return result;
+}
+
 function renderFormCheckboxes() {
   syncDerivedArrays();
+  renderDietaryPerPerson();
   const spouseName    = document.getElementById('f_spouse')?.value.trim() || '';
   const hasSpouse     = spouseName && spouseName !== '-' && spouseName !== '0';
   const addlPeople    = _currentAdditionalGuests.filter(a=>a.name&&a.name.trim());
@@ -2755,8 +2859,9 @@ function saveGuest(e) {
     respond2: document.getElementById('f_respond2').value.trim(),
     allergen: document.getElementById('f_allergen').value.trim(),
     foodpref: document.getElementById('f_foodpref').value.trim(),
-    bevhot: document.getElementById('f_bevhot').value.trim(),
-    bevcold: document.getElementById('f_bevcold').value.trim(),
+    bevhot:   document.getElementById('f_bevhot').value.trim(),
+    bevcold:  document.getElementById('f_bevcold').value.trim(),
+    dietaryInfo: getDietaryFromForm(),
     remark1: document.getElementById('f_remark1').value.trim(),
     remark2: document.getElementById('f_remark2').value.trim(),
     mealAttendance: mealAtt,
@@ -2817,6 +2922,12 @@ function editGuest(id) {
     // Restore additional guests list
     _currentAdditionalGuests = (g.additionalGuests || []).map(a => ({...a}));
     renderAdditionalGuestsList(_currentAdditionalGuests);
+    // Restore dietary info per person
+    _currentDietaryInfo = (g.dietaryInfo || []).map(d => ({...d}));
+    // Migrate legacy single fields to index 0 if no dietaryInfo yet
+    if (!_currentDietaryInfo.length && (g.allergen || g.foodpref || g.bevhot || g.bevcold)) {
+      _currentDietaryInfo[0] = { allergen: g.allergen||'', foodpref: g.foodpref||'', bevhot: g.bevhot||'', bevcold: g.bevcold||'' };
+    }
     // Restore chaperone/driver selects and sync car details from driver register
     populateChaperoneDriverSelects();
     setTimeout(() => {
@@ -2880,6 +2991,7 @@ function clearForm() {
   document.getElementById('photoPlaceholder').style.display = 'flex';
   toggleStay2(false);
   _currentAdditionalGuests = [];
+  _currentDietaryInfo = [];
   renderAdditionalGuestsList([]);
 }
 
@@ -2995,18 +3107,49 @@ function renderMeals() {
 
   // Dietary table
   const dt = document.getElementById('dietaryBody');
-  const withDietary = db.guests.filter(g => g.allergen||g.foodpref||g.bevhot||g.bevcold);
-  dt.innerHTML = withDietary.length ? withDietary.map((g,i) => `
-    <tr>
-      <td>${i+1}</td>
-      <td class="td-name">${esc(g.name)}</td>
-      <td><span class="pill pill-hotel">GUEST</span></td>
-      <td style="font-size:0.78rem; color:var(--red);">${esc(g.allergen)||'—'}</td>
-      <td style="font-size:0.78rem;">${esc(g.foodpref)||'—'}</td>
-      <td style="font-size:0.78rem;">${esc(g.bevhot)||'—'}</td>
-      <td style="font-size:0.78rem;">${esc(g.bevcold)||'—'}</td>
-    </tr>`).join('')
-    : '<tr><td colspan="7" style="text-align:center;color:var(--slate-light);padding:20px;">No dietary requirements recorded.</td></tr>';
+  const dtRows = [];
+  let dtRowNum = 0;
+  db.guests.forEach(g => {
+    // Build per-person dietary list
+    const spouseValid = g.spouse && g.spouse !== '-' && g.spouse !== '0' && g.spouse.trim();
+    const addlPeople  = (g.additionalGuests||[]).filter(a => a.name && a.name.trim());
+
+    const persons = [{ name: g.name, role: 'GUEST', idx: 0, pillClass: 'pill-hotel' }];
+    if (spouseValid) persons.push({ name: g.spouse, role: 'SPOUSE', idx: 1, pillClass: 'pill-spouse' });
+    addlPeople.forEach((ag, pi) => persons.push({ name: ag.name, role: ag.relation||'ADDL', idx: 2+pi, pillClass: 'pill-arrival' }));
+
+    persons.forEach(({ name, role, idx, pillClass }) => {
+      // Get dietary from new dietaryInfo array, falling back to legacy fields for idx 0
+      const di = (g.dietaryInfo || [])[idx] || {};
+      const allergen = di.allergen || (idx===0 ? g.allergen||'' : '');
+      const foodpref = di.foodpref || (idx===0 ? g.foodpref||'' : '');
+      const bevhot   = di.bevhot   || (idx===0 ? g.bevhot||''   : '');
+      const bevcold  = di.bevcold  || (idx===0 ? g.bevcold||''  : '');
+      const remark   = di.remark   || '';
+      if (!allergen && !foodpref && !bevhot && !bevcold && !remark) return; // skip blank rows
+      dtRowNum++;
+      const remarkCell = remark
+        ? `<td style="font-size:0.78rem;">
+            <span style="display:inline-flex;align-items:center;gap:6px;background:#fff3e0;border:1px solid #e65100;border-radius:6px;padding:4px 10px;color:#e65100;font-weight:600;">
+              ⚑ ${esc(remark)}
+            </span>
+           </td>`
+        : `<td style="color:var(--slate-light);font-size:0.72rem;">—</td>`;
+      dtRows.push(`<tr>
+        <td>${dtRowNum}</td>
+        <td class="td-name">${esc(name)}</td>
+        <td><span class="pill ${pillClass}" style="font-size:0.65rem;">${esc(role)}</span></td>
+        <td style="font-size:0.78rem;color:var(--red);">${esc(allergen)||'—'}</td>
+        <td style="font-size:0.78rem;">${esc(foodpref)||'—'}</td>
+        <td style="font-size:0.78rem;">${esc(bevhot)||'—'}</td>
+        <td style="font-size:0.78rem;">${esc(bevcold)||'—'}</td>
+        ${remarkCell}
+        <td><button class="btn btn-outline btn-sm" onclick="editGuest(${g.id});showView('add-guest')" title="Edit dietary info">✏️</button></td>
+      </tr>`);
+    });
+  });
+  dt.innerHTML = dtRows.length ? dtRows.join('')
+    : '<tr><td colspan="8" style="text-align:center;color:var(--slate-light);padding:20px;">No dietary requirements recorded. Edit a guest to add them.</td></tr>';
 
   // Meal attendance matrix
   const header = document.getElementById('mealsMatrixHeader');
@@ -3069,32 +3212,47 @@ function renderMeals() {
     rows.push(`<tr><td colspan="${3 + db.mealEvents.length}" style="padding:0;background:var(--border);height:1px;"></td></tr>`);
   });
 
-  // Host team rows (at bottom of matrix, always attending all meals they're assigned to)
+  // Host team rows — deduplicated by name so each host appears only once
+  // Build a map: hostName → { role, meals: Set of mealIdx }
+  const hostMap = new Map(); // key: name.toLowerCase()
   db.mealEvents.forEach((m, mi) => {
-    const hosts = getHostsForMeal(mi);
-    hosts.forEach((h, hi) => {
-      const cells = db.mealEvents.map((_,ci) => {
-        if (ci === mi) {
-          // Always attending this meal
-          return `<td class="meal-check" style="background:rgba(45,122,79,0.08);">
-            <span class="check-yes" title="Host — always attending">★</span></td>`;
-        }
-        return `<td class="meal-check" style="opacity:0.2;"><span class="check-no">○</span></td>`;
-      }).join('');
-      rows.push(`<tr style="background:rgba(45,122,79,0.04);">
-        <td colspan="1" style="text-align:center;color:var(--green);font-weight:700;font-size:0.72rem;">H</td>
-        <td style="font-size:0.8rem;padding-left:12px;font-weight:600;color:var(--green);">
-          ${esc(h.name)}<span style="font-size:0.65rem;color:var(--slate-light);font-weight:400;margin-left:6px;">${esc(h.role||'Host')}</span>
-        </td>
-        <td style="background:rgba(45,122,79,0.08);"><span style="background:var(--green);color:white;font-size:0.62rem;font-weight:700;padding:2px 6px;border-radius:4px;">HOST</span></td>
-        ${cells}
-      </tr>`);
+    getHostsForMeal(mi).forEach(h => {
+      const key = h.name.trim().toLowerCase();
+      if (!hostMap.has(key)) {
+        hostMap.set(key, { name: h.name.trim(), role: h.role || 'Host', meals: new Set(), mealKeys: [] });
+      }
+      const entry = hostMap.get(key);
+      entry.meals.add(mi);
+      // Keep the role from whichever meal entry has one
+      if (h.role && !entry.role) entry.role = h.role;
+      entry.mealKeys.push({ mi, hi: getHostsForMeal(mi).indexOf(h) });
     });
+  });
+
+  hostMap.forEach(({ name, role, meals }) => {
+    const cells = db.mealEvents.map((_, ci) => {
+      if (meals.has(ci)) {
+        return `<td class="meal-check" style="background:rgba(45,122,79,0.08);">
+          <span class="check-yes" title="Host — attending">★</span></td>`;
+      }
+      return `<td class="meal-check" style="opacity:0.15;"><span class="check-no">○</span></td>`;
+    }).join('');
+
+    rows.push(`<tr style="background:rgba(45,122,79,0.04);">
+      <td colspan="1" style="text-align:center;color:var(--green);font-weight:700;font-size:0.72rem;">H</td>
+      <td style="font-size:0.8rem;padding-left:12px;font-weight:600;color:var(--green);">
+        ${esc(name)}<span style="font-size:0.65rem;color:var(--slate-light);font-weight:400;margin-left:6px;">${esc(role)}</span>
+      </td>
+      <td style="background:rgba(45,122,79,0.04);">
+        <span style="background:var(--green);color:white;font-size:0.62rem;font-weight:700;padding:2px 6px;border-radius:4px;">HOST</span>
+      </td>
+      ${cells}
+    </tr>`);
   });
 
   matBody.innerHTML = rows.join('') || '<tr><td colspan="20" style="text-align:center;padding:20px;color:var(--slate-light);">No guests yet.</td></tr>';
 
-  // ── Compute per-meal totals (guests + hosts) ─────────────────────────────
+  // ── Compute per-meal totals (guests + unique hosts per meal) ───────────────
   const mealTotals = db.mealEvents.map((_,mi) => {
     let count = 0;
     db.guests.forEach(g => {
@@ -3107,8 +3265,9 @@ function renderMeals() {
         });
       }
     });
-    // Add host team count
-    count += getHostsForMeal(mi).length;
+    // Count unique host names for this meal
+    const uniqueHostNames = new Set(getHostsForMeal(mi).map(h => h.name.trim().toLowerCase()));
+    count += uniqueHostNames.size;
     return count;
   });
 
@@ -3117,7 +3276,7 @@ function renderMeals() {
   if (strip) {
     strip.innerHTML = db.mealEvents.length
       ? db.mealEvents.map((m,mi) => {
-          const hostCount = getHostsForMeal(mi).length;
+          const hostCount = new Set(getHostsForMeal(mi).map(h => h.name.trim().toLowerCase())).size;
           return `
           <div style="background:var(--navy);color:white;border-radius:8px;padding:8px 14px;min-width:120px;text-align:center;">
             <div style="font-size:1.4rem;font-weight:700;font-family:'Playfair Display',serif;color:var(--gold-light);">${mealTotals[mi]}</div>
@@ -3779,7 +3938,7 @@ function drvInfo(id) {
 function populateChaperoneDriverSelects() {
   const blankOpt = '<option value="">— None —</option>';
   const chapOpts = blankOpt + db.chaperones.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  const drvOpts  = blankOpt + db.drivers.map(d => `<option value="${d.id}">${esc(d.name)}${d.car?' — '+d.car:''}</option>`).join('');
+  const drvOpts  = blankOpt + db.drivers.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
   ['arr','dep'].forEach(leg => {
     const cs = document.getElementById(`f_${leg}_chaperone_id`);
     const ds = document.getElementById(`f_${leg}_driver_id`);
@@ -3970,31 +4129,30 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
 //  CHECK-IN SYSTEM
 // ═══════════════════════════════════════════
 
-function checkinKey(sessionKey, guestIdOrKey, type, idx) {
-  // Accept either a pre-formed personKey or separate params
-  if (type === undefined) return `${sessionKey}|${guestIdOrKey}`;
-  return `${sessionKey}|${guestIdOrKey}|${type}|${idx ?? 0}`;
+// ── Check-in key: always "sessionKey|personKey" ──────────────────────────────
+// personKey is "guestId|type|idx" or "host|mealIdx|hostIdx"
+function checkinKey(sessionKey, personKeyOrGuestId, type, idx) {
+  if (type === undefined) {
+    // Called as checkinKey(sessionKey, personKey)
+    return `${sessionKey}|${personKeyOrGuestId}`;
+  }
+  // Called as checkinKey(sessionKey, guestId, type, idx) — legacy form
+  return `${sessionKey}|${personKeyOrGuestId}|${type}|${idx ?? 0}`;
 }
 
-function isCheckedIn(sessionKey, guestIdOrKey, type, idx) {
-  const k = type === undefined
-    ? `${sessionKey}|${guestIdOrKey}`
-    : `${sessionKey}|${guestIdOrKey}|${type}|${idx ?? 0}`;
+function isCheckedIn(sessionKey, personKeyOrGuestId, type, idx) {
+  const k = checkinKey(sessionKey, personKeyOrGuestId, type, idx);
   return !!(db.checkinLog || {})[k];
 }
 
-function getCheckinTime(sessionKey, guestIdOrKey, type, idx) {
-  const k = type === undefined
-    ? `${sessionKey}|${guestIdOrKey}`
-    : `${sessionKey}|${guestIdOrKey}|${type}|${idx ?? 0}`;
+function getCheckinTime(sessionKey, personKeyOrGuestId, type, idx) {
+  const k = checkinKey(sessionKey, personKeyOrGuestId, type, idx);
   return (db.checkinLog || {})[k]?.time || null;
 }
 
-function doCheckin(sessionKey, guestIdOrKey, type, idx) {
+function doCheckin(sessionKey, personKeyOrGuestId, type, idx) {
   if (!db.checkinLog) db.checkinLog = {};
-  const k = type === undefined
-    ? `${sessionKey}|${guestIdOrKey}`
-    : `${sessionKey}|${guestIdOrKey}|${type}|${idx ?? 0}`;
+  const k = checkinKey(sessionKey, personKeyOrGuestId, type, idx);
   if (db.checkinLog[k]) delete db.checkinLog[k];
   else db.checkinLog[k] = { time: new Date().toISOString(), by: 'staff' };
   saveDB();
@@ -4156,7 +4314,9 @@ function renderCheckin() {
 
   // Walk-ins already checked in (from log)
   const walkinKeys = Object.keys(db.checkinLog||{}).filter(k => {
-    if (!k.startsWith(sessionKey + '|')) return false;
+    // checkinLog keys in memory use | (only __ in Firestore storage)
+    const sessionPrefix = sessionKey + '|';
+    if (!k.startsWith(sessionPrefix)) return false;
     const parts = k.split('|');
     const pid = parts[1], ptype = parts[2], pidx = parts[3];
     return !registered || !registered.has(`${pid}|${ptype}|${pidx}`);
@@ -4164,7 +4324,8 @@ function renderCheckin() {
   const walkinPeople = walkinKeys.map(k => {
     const parts = k.split('|');
     const pid = parseInt(parts[1]), ptype = parts[2], pidx = parseInt(parts[3]);
-    return allPeople.find(p => p.key === walkinKey || (p.guestId===pid && p.type===ptype && p.idx===pidx));
+    const personK = `${pid}|${ptype}|${pidx}`;
+    return allPeople.find(p => (p.key && p.key === personK) || (p.guestId===pid && p.type===ptype && p.idx===pidx));
   }).filter(Boolean);
 
   // Session info label
@@ -4297,12 +4458,11 @@ function addWalkin() {
   const sel = document.getElementById('walkinSelect');
   if (!sel || !sel.value) { showToast('Please select a guest first', 'error'); return; }
   const sessionKey = document.getElementById('checkinSession')?.value || '__arrival__';
-  const parts = sel.value.split('|');
-  const guestId = parseInt(parts[0]), type = parts[1], idx = parseInt(parts[2]);
-  // Check them in immediately as a walk-in
+  const personK    = sel.value; // full person key: "guestId|type|idx" or "host|mealIdx|hostIdx"
   if (!db.checkinLog) db.checkinLog = {};
-  const key = checkinKey(sessionKey, guestId, type, idx);
-  db.checkinLog[key] = { time: new Date().toISOString(), by: 'walkin' };
+  // Use unified key format: "sessionKey|personKey"
+  const logKey = `${sessionKey}|${personK}`;
+  db.checkinLog[logKey] = { time: new Date().toISOString(), by: 'walkin' };
   saveDB();
   renderCheckin();
   showToast('🚶 Walk-in added and checked in', 'success');
@@ -4614,12 +4774,45 @@ function svgChair(x, y, angle, personK, seatId, tableId) {
     const g       = db.guests.find(gx => gx.id === pInfo.guestId);
     const photo   = pInfo.type === 'guest' && g?.photo ? g.photo : '';
     const ini     = initials(name).substring(0, 2);
-    const short   = name.length > 9 ? name.substring(0, 8) + '…' : name;
-    // Name label positioned outside the chair (away from table centre — in direction of angle)
-    const lx = (x + Math.cos(angle) * (CH / 2 + 10)).toFixed(1);
-    const ly = (y + Math.sin(angle) * (CH / 2 + 10)).toFixed(1);
-    nameLabel = `<text x="${lx}" y="${ly}" font-family="Inter,sans-serif" font-size="8" font-weight="600"
-      fill="#1a2744" text-anchor="middle" dominant-baseline="middle" pointer-events="none">${esc(short)}</text>`;
+
+    // Smart name display: use first name, or "F. Surname" if short enough
+    const nameParts = name.trim().split(/\s+/);
+    // Strip honorifics for display
+    const honorifics = ['Prof','Dr','Mr','Mrs','Ms','Rev','Ps','Pastor','Bishop','Dr.','Prof.'];
+    const filtered = nameParts.filter(p => !honorifics.includes(p));
+    const displayName = filtered.length > 0
+      ? (filtered[0].length > 11 ? filtered[0].substring(0,10)+'…' : filtered[0])
+      : (nameParts[0].length > 11 ? nameParts[0].substring(0,10)+'…' : nameParts[0]);
+
+    // Name label — positioned outside chair, further out to avoid overlap
+    const labelDist = CH / 2 + 14;
+    const lx = (x + Math.cos(angle) * labelDist).toFixed(1);
+    const ly = (y + Math.sin(angle) * labelDist).toFixed(1);
+
+    const dietNote = getDietaryRemark(personK);
+
+    // Dietary: small note text below name + a tasteful fork symbol on the chair corner
+    let dietSVG = '';
+    if (dietNote) {
+      // Fork symbol (✦ dietary marker) on top-right of chair
+      const fx = (x + CW/2 - 4).toFixed(1);
+      const fy = (y - CH/2 + 4).toFixed(1);
+      // Short dietary note (first 20 chars) shown below the name
+      const shortNote = dietNote.length > 22 ? dietNote.substring(0,21)+'…' : dietNote;
+      const ny = (parseFloat(ly) + 10).toFixed(1);
+      dietSVG = `
+        <circle cx="${fx}" cy="${fy}" r="5" fill="#c8952a" transform="${rot}"/>
+        <text x="${fx}" y="${fy}" font-family="Inter,sans-serif" font-size="6" font-weight="900"
+          fill="white" text-anchor="middle" dominant-baseline="middle" transform="${rot}" pointer-events="none">✦</text>
+        <text x="${lx}" y="${ny}" font-family="Inter,sans-serif" font-size="7" font-weight="500"
+          fill="#c8952a" text-anchor="middle" dominant-baseline="middle" pointer-events="none"
+          font-style="italic">${esc(shortNote)}</text>`;
+    }
+
+    nameLabel = `
+      <text x="${lx}" y="${ly}" font-family="Inter,sans-serif" font-size="9" font-weight="700"
+        fill="#1a2744" text-anchor="middle" dominant-baseline="middle" pointer-events="none">${esc(displayName)}</text>
+      ${dietSVG}`;
 
     if (photo) {
       const clipId = `cp_${seatId.replace(/\W/g, '_')}`;
@@ -4895,47 +5088,108 @@ function assignGuestToSelected(personK) {
 }
 
 // ── Table detail panel ───────────────────────────────────────────────────────
+function getDietaryRemark(personK) {
+  // Returns the dietary remark string for a person, or '' if none
+  if (!personK) return '';
+  if (isHostKey(personK)) return ''; // hosts don't have dietaryInfo
+
+  const { guestId, type, idx } = parsePersonKey(personK);
+  const g = db.guests.find(x => x.id === guestId);
+  if (!g) return '';
+
+  // Determine the dietaryInfo index: 0=guest, 1=spouse, 2+=addl
+  const spouseValid = g.spouse && g.spouse !== '-' && g.spouse !== '0' && g.spouse.trim();
+  let diIdx = 0;
+  if (type === 'guest')  diIdx = 0;
+  else if (type === 'spouse') diIdx = 1;
+  else if (type === 'addl')   diIdx = spouseValid ? 2 + idx : 1 + idx;
+
+  const di = (g.dietaryInfo || [])[diIdx] || {};
+  // Also check legacy allergen on main guest
+  const al = di.allergen || (diIdx === 0 ? g.allergen || '' : '');
+  const rm = di.remark   || '';
+  return [al, rm].filter(Boolean).join(' · ');
+}
+
 function renderTableDetail() {
   const panel = document.getElementById('seatingTableDetail');
   if (!panel) return;
-  const t = _seating.tables.find(x => x.id === _seating.selectedTableId);
-  if (!t) { panel.style.display = 'none'; return; }
-  panel.style.display = '';
 
-  const seats = Array.from({length: t.seats}, (_,s) => {
-    const seatId  = `${t.id}_s${s}`;
-    const personK = _seating.assignments[seatId] || '';
-    return {seatId, s, personK};
-  });
-  const seated = seats.filter(x => x.personK).length;
+  if (!_seating.mealKey || !_seating.tables.length) {
+    panel.innerHTML = '';
+    return;
+  }
 
-  panel.innerHTML = `<div class="table-detail-card">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
-      <div>
-        <span style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gold);">Selected Table</span>
-        <div style="font-weight:700;font-size:1rem;color:var(--navy);margin-top:1px;">${esc(t.label)} — ${seated}/${t.seats} seated</div>
+  const totalSeats    = _seating.tables.reduce((s,t) => s+t.seats, 0);
+  const totalAssigned = Object.values(_seating.assignments).filter(Boolean).length;
+
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gold);">
+        All Tables — ${totalAssigned}/${totalSeats} seats filled
       </div>
-      <div style="display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap;">
-        <label style="font-size:0.72rem;font-weight:600;color:var(--slate);">Name:</label>
-        <input type="text" value="${esc(t.label)}" onchange="renameTable('${t.id}',this.value)"
-          style="border:1.5px solid var(--border);border-radius:6px;padding:5px 10px;font-size:0.82rem;width:130px;font-family:Inter,sans-serif;">
-        <label style="font-size:0.72rem;font-weight:600;color:var(--slate);">Seats:</label>
-        <input type="number" min="1" max="30" value="${t.seats}" onchange="resizeTable('${t.id}',this.value)"
-          style="border:1.5px solid var(--border);border-radius:6px;padding:5px 8px;font-size:0.82rem;width:56px;font-family:Inter,sans-serif;">
-        <button class="btn btn-danger btn-sm" onclick="deleteTable('${t.id}')">🗑 Delete</button>
+      <div style="font-size:0.72rem;color:var(--slate-light);">
+        Click a guest tag to remove · Click an empty seat to assign
       </div>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:7px;">
-      ${seats.map(({seatId, s, personK}) => personK
-        ? `<div class="seat-chip assigned" onclick="unassignSeat('${seatId}')" title="Click to remove">
-            🪑 ${esc(personLabel(personK))} <span style="opacity:0.5;font-size:0.65rem;margin-left:2px;">✕</span>
-           </div>`
-        : `<div class="seat-chip" onclick="openSeatPickerSVG('${seatId}')" title="Click to assign">
-            <span style="opacity:0.35;">🪑</span> <span style="color:var(--slate-light);">Seat ${s+1}</span>
-           </div>`
-      ).join('')}
-    </div>
-  </div>`;
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+      ${_seating.tables.map(t => {
+        const seated = Object.keys(_seating.assignments).filter(k => k.startsWith(t.id+'_') && _seating.assignments[k]).length;
+        const isSelected = _seating.selectedTableId === t.id;
+        const seats = Array.from({length: t.seats}, (_,s) => {
+          const seatId  = `${t.id}_s${s}`;
+          const personK = _seating.assignments[seatId] || '';
+          return { seatId, s, personK };
+        });
+
+        const seatChips = seats.map(({seatId, s, personK}) => {
+          if (personK) {
+            const name     = personLabel(personK);
+            const dietNote = getDietaryRemark(personK);
+            const flag     = dietNote
+              ? `<span title="${esc(dietNote)}" style="display:inline-flex;align-items:center;gap:3px;background:rgba(200,149,42,0.12);border:1px solid rgba(200,149,42,0.4);border-radius:10px;padding:1px 6px;font-size:0.65rem;color:var(--gold);font-weight:600;margin-left:4px;cursor:help;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;">✦ ${esc(dietNote.length > 18 ? dietNote.substring(0,17)+'…' : dietNote)}</span>`
+              : '';
+            return `<div class="seat-chip assigned" onclick="unassignSeat('${seatId}')"
+              style="display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;max-width:100%;"
+              title="${dietNote ? '✦ ' + esc(dietNote) + ' · Click to remove' : 'Click to remove'}">
+              🪑 <span style="font-weight:600;">${esc(name)}</span>${flag}<span style="opacity:0.4;font-size:0.6rem;">✕</span>
+            </div>`;
+          } else {
+            return `<div class="seat-chip" onclick="selectTableAndPick('${t.id}','${seatId}')"
+              style="opacity:0.6;" title="Assign seat ${s+1}">
+              <span style="opacity:0.4;">🪑</span> <span style="color:var(--slate-light);font-size:0.74rem;">Seat ${s+1}</span>
+            </div>`;
+          }
+        }).join('');
+
+        return `<div class="table-detail-card" style="cursor:pointer;transition:box-shadow 0.15s;${isSelected?'box-shadow:0 0 0 2.5px var(--gold);':''}">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:0.9rem;color:var(--navy);">${esc(t.label)}</div>
+              <div style="font-size:0.7rem;color:var(--slate-light);">${seated}/${t.seats} seated · ${t.type === 'round' ? '⬤ Round' : '▬ Rect'}</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input type="text" value="${esc(t.label)}" onchange="renameTable('${t.id}',this.value)"
+                style="border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:0.76rem;width:90px;font-family:Inter,sans-serif;"
+                onclick="event.stopPropagation()" title="Rename table">
+              <input type="number" min="1" max="30" value="${t.seats}" onchange="resizeTable('${t.id}',this.value)"
+                style="border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:0.76rem;width:46px;font-family:Inter,sans-serif;"
+                onclick="event.stopPropagation()" title="Change seat count">
+              <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteTable('${t.id}')" style="padding:3px 8px;">🗑</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;">
+            ${seatChips}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function selectTableAndPick(tableId, seatId) {
+  _seating.selectedTableId = tableId;
+  renderSeatingCanvas();
+  openSeatPickerSVG(seatId);
 }
 
 function renameTable(id, label) {
