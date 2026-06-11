@@ -540,6 +540,7 @@
     opacity: 0.4;
     transform: scale(0.97);
   }
+  tr.row-drag-over td { background: rgba(200,149,42,0.12) !important; }
   .reorder-mode-badge {
     display:inline-flex;align-items:center;gap:6px;
     background:var(--gold);color:white;
@@ -1217,10 +1218,12 @@
     <div class="section-desc">All chaperones and their guest assignments. Changes here sync across the entire app.</div>
     <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center;">
       <button class="btn btn-gold btn-sm" onclick="addChaperone()">+ Add Chaperone</button>
+      <button class="btn btn-outline btn-sm" id="chapReorderBtn" onclick="toggleReorder('chaperone')" title="Drag rows to reorder">⠿ Reorder</button>
+      <button class="btn btn-outline btn-sm" id="chapResetBtn" onclick="resetOrder('chaperone')" style="display:none;">↺ Reset</button>
     </div>
     <div class="table-wrapper">
       <table>
-        <thead><tr><th>#</th><th>Name</th><th>Contact No.</th><th>Remark</th><th>Assigned Guests</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th style="width:28px;"></th><th>#</th><th>Name</th><th>Contact No.</th><th>Remark</th><th>Assigned Guests</th><th>Status</th><th></th></tr></thead>
         <tbody id="chaperoneBody"></tbody>
       </table>
     </div>
@@ -1232,10 +1235,12 @@
     <div class="section-desc">All drivers, vehicles, and guest assignments. Changes here sync across the entire app.</div>
     <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center;">
       <button class="btn btn-gold btn-sm" onclick="addDriver()">+ Add Driver</button>
+      <button class="btn btn-outline btn-sm" id="drvReorderBtn" onclick="toggleReorder('driver')" title="Drag rows to reorder">⠿ Reorder</button>
+      <button class="btn btn-outline btn-sm" id="drvResetBtn" onclick="resetOrder('driver')" style="display:none;">↺ Reset</button>
     </div>
     <div class="table-wrapper">
       <table>
-        <thead><tr><th>#</th><th>Name</th><th>Contact</th><th>Car Plate</th><th>Brand / Model</th><th>Colour</th><th>Remark</th><th>Assigned Guests</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th style="width:28px;"></th><th>#</th><th>Name</th><th>Contact</th><th>Car Plate</th><th>Brand / Model</th><th>Colour</th><th>Remark</th><th>Assigned Guests</th><th>Status</th><th></th></tr></thead>
         <tbody id="driverBody"></tbody>
       </table>
     </div>
@@ -1561,6 +1566,32 @@
   </div>
 </div>
 
+<!-- ──────────────── ACTIVITY COMPANIONS MODAL ──────────────── -->
+<div class="modal-overlay" id="companionModal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="companionModalTitle">Activity Companions</div>
+        <div style="font-size:0.75rem;color:var(--slate-light);margin-top:2px;" id="companionModalSubtitle"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('companionModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:0.78rem;color:var(--slate);margin-bottom:14px;">
+        Add companions / guides / staff accompanying guests on this activity (e.g. chaperones, tour guides, drivers on-site).
+        They appear in the Check-In tracker for this activity only.
+      </div>
+      <div id="companionListEditor" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;"></div>
+      <button class="btn btn-outline btn-sm" onclick="addCompanionRow()" style="margin-bottom:16px;">+ Add Companion</button>
+      <input type="hidden" id="companionModalActIdx">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveCompanions()">Save Companions</button>
+        <button class="btn btn-outline" onclick="closeModal('companionModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ──────────────── CHAPERONE MODAL ──────────────── -->
 <div class="modal-overlay" id="chaperoneModal">
   <div class="modal" style="max-width:520px;">
@@ -1579,12 +1610,12 @@
           <input type="text" id="ch_contact" placeholder="e.g. 9123 4567">
         </div>
         <div class="form-group">
-          <label>Status</label>
-          <select id="ch_status">
-            <option value="Available">Available</option>
-            <option value="Assigned">Assigned</option>
-            <option value="Unavailable">Unavailable</option>
-          </select>
+          <label>Availability</label>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:6px;">
+            <input type="checkbox" id="ch_unavailable" style="width:16px;height:16px;">
+            Mark as Unavailable
+          </label>
+          <div style="font-size:0.7rem;color:var(--slate-light);margin-top:4px;">Status is auto-set to <strong>Assigned</strong> when guests are linked, otherwise <strong>Free</strong>.</div>
         </div>
         <div class="form-group full-width">
           <label>Remark</label>
@@ -1618,12 +1649,12 @@
           <input type="text" id="dr_contact" placeholder="e.g. 9479 1551">
         </div>
         <div class="form-group">
-          <label>Status</label>
-          <select id="dr_status">
-            <option value="Free">Free</option>
-            <option value="Assigned">Assigned</option>
-            <option value="Unavailable">Unavailable</option>
-          </select>
+          <label>Availability</label>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:6px;">
+            <input type="checkbox" id="dr_unavailable" style="width:16px;height:16px;">
+            Mark as Unavailable
+          </label>
+          <div style="font-size:0.7rem;color:var(--slate-light);margin-top:4px;">Status is auto-set to <strong>Assigned</strong> when guests are linked, otherwise <strong>Free</strong>.</div>
         </div>
         <div class="form-group">
           <label>Car Plate</label>
@@ -1668,7 +1699,10 @@ let db = {
   checkinLog: {},
   seatingPlans: {},
   mealHosts: {},
-  guestOrder: []   // custom display order — array of guest IDs
+  activityCompanions: {},  // { actIdx: [{ name, role }] } — companions per activity
+  guestOrder:     [],   // custom display order — array of guest IDs
+  driverOrder:    [],   // custom display order — array of driver IDs
+  chaperoneOrder: []    // custom display order — array of chaperone IDs
 };
 // ── Computed getters: derive meals/activities from db.events (single source of truth) ──
 function getMealEvents() {
@@ -1739,7 +1773,10 @@ function migrateDB() {
   if (!db.hotels)     db.hotels     = [];
   if (!db.checkinLog)   db.checkinLog   = {};
   if (!db.seatingPlans) db.seatingPlans = {};
-  if (!db.mealHosts)    db.mealHosts    = {};
+  if (!db.mealHosts)           db.mealHosts           = {};
+  if (!db.activityCompanions)  db.activityCompanions  = {};
+  if (!db.driverOrder || !db.driverOrder.length)       db.driverOrder    = db.drivers.map(d => d.id);
+  if (!db.chaperoneOrder || !db.chaperoneOrder.length) db.chaperoneOrder = db.chaperones.map(c => c.id);
   if (!db.guestOrder || !db.guestOrder.length) {
     db.guestOrder = db.guests.map(g => g.id);
   }
@@ -1868,6 +1905,13 @@ function _toFirestore(data) {
     d.mealHosts = mh;
   }
 
+  // ── activityCompanions: integer keys → string keys ───────────────────────
+  if (d.activityCompanions) {
+    const ac = {};
+    Object.keys(d.activityCompanions).forEach(k => { ac['ai_' + k] = d.activityCompanions[k]; });
+    d.activityCompanions = ac;
+  }
+
   // ── checkinLog: pipe | chars in keys → replace with ~~~ (safe separator) ──
   // Firestore does not allow | in field names
   if (d.checkinLog) {
@@ -1917,6 +1961,16 @@ function _fromFirestore(data) {
       mh[numKey] = data.mealHosts[k];
     });
     data.mealHosts = mh;
+  }
+
+  // ── activityCompanions: string keys → integer keys ────────────────────
+  if (data.activityCompanions) {
+    const ac = {};
+    Object.keys(data.activityCompanions).forEach(k => {
+      const numKey = k.startsWith('ai_') ? k.slice(3) : k;
+      ac[numKey] = data.activityCompanions[k];
+    });
+    data.activityCompanions = ac;
   }
 
   // ── checkinLog: ~~~ → | ─────────────────────────────────────────────────
@@ -2749,15 +2803,15 @@ function openGuestModal(id) {
     ${(() => {
       const spouseValid = g.spouse && g.spouse!=='-' && g.spouse!=='0' && g.spouse.trim();
       const addlPeople  = (g.additionalGuests||[]).filter(a=>a.name&&a.name.trim());
-      const persons = [{name:g.name,role:'Guest',idx:0}];
-      if(spouseValid) persons.push({name:g.spouse,role:'Spouse',idx:1});
-      addlPeople.forEach((ag,pi)=>persons.push({name:ag.name,role:ag.relation||'Addl Guest',idx:2+pi}));
-      const rows = persons.map(({name,role,idx})=>{
-        const di=(g.dietaryInfo||[])[idx]||{};
-        const al=di.allergen||(idx===0?g.allergen||'':'');
-        const fp=di.foodpref||(idx===0?g.foodpref||'':'');
-        const bh=di.bevhot  ||(idx===0?g.bevhot  ||'':'');
-        const bc=di.bevcold ||(idx===0?g.bevcold ||'':'');
+      const persons = [{name:g.name,role:'Guest',diIdx:0}];
+      if(spouseValid) persons.push({name:g.spouse,role:'Spouse',diIdx:1});
+      addlPeople.forEach((ag,pi)=>persons.push({name:ag.name,role:ag.relation||'Addl Guest',diIdx:spouseValid?2+pi:1+pi}));
+      const rows = persons.map(({name,role,diIdx})=>{
+        const di=(g.dietaryInfo||[])[diIdx]||{};
+        const al=di.allergen||(diIdx===0?g.allergen||'':'');
+        const fp=di.foodpref||(diIdx===0?g.foodpref||'':'');
+        const bh=di.bevhot  ||(diIdx===0?g.bevhot  ||'':'');
+        const bc=di.bevcold ||(diIdx===0?g.bevcold ||'':'');
         const rm=di.remark  ||'';
         if(!al&&!fp&&!bh&&!bc&&!rm) return '';
         return `<div class="info-item" style="grid-column:1/-1;background:var(--ivory);border-radius:8px;padding:10px 12px;">
@@ -2834,13 +2888,14 @@ function renderDietaryPerPerson() {
   // idx 0 = main guest, 1 = spouse, 2+ = additional guests
   const people = [];
   const guestName = document.getElementById('f_name')?.value.trim() || 'Main Guest';
-  people.push({ label: guestName || 'Main Guest', role: 'GUEST', roleColor: 'var(--navy)', idx: 0 });
-  if (hasSpouse) people.push({ label: spouseName, role: 'SPOUSE', roleColor: 'var(--gold)', idx: 1 });
+  people.push({ label: guestName || 'Main Guest', role: 'GUEST', roleColor: 'var(--navy)', formIdx: 0 });
+  if (hasSpouse) people.push({ label: spouseName, role: 'SPOUSE', roleColor: 'var(--gold)', formIdx: 1 });
   addlPeople.forEach((ag, pi) => {
-    people.push({ label: ag.name, role: ag.relation || 'ADDL', roleColor: 'var(--blue)', idx: 2 + pi });
+    const formIdx = hasSpouse ? 2 + pi : 1 + pi;
+    people.push({ label: ag.name, role: ag.relation || 'ADDL', roleColor: 'var(--blue)', formIdx });
   });
 
-  wrap.innerHTML = people.map(({ label, role, roleColor, idx }) => `
+  wrap.innerHTML = people.map(({ label, role, roleColor, formIdx }) => `
     <div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;background:var(--ivory);">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
         <span style="background:${roleColor};color:white;font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:0.05em;">${esc(role)}</span>
@@ -2849,22 +2904,22 @@ function renderDietaryPerPerson() {
       <div class="form-grid form-grid-2">
         <div class="form-group full-width">
           <label>Food Allergen / Dislike</label>
-          <textarea id="f_diet_allergen_${idx}" rows="2" placeholder="e.g. No seafood, no nuts…"
-            style="font-size:0.82rem;">${esc(_getDietaryVal(idx, 'allergen'))}</textarea>
+          <textarea id="f_diet_allergen_${formIdx}" rows="2" placeholder="e.g. No seafood, no nuts…"
+            style="font-size:0.82rem;">${esc(_getDietaryVal(formIdx, 'allergen'))}</textarea>
         </div>
         <div class="form-group full-width">
           <label>Food Preference</label>
-          <textarea id="f_diet_foodpref_${idx}" rows="2" placeholder="e.g. White meat, no pork…"
-            style="font-size:0.82rem;">${esc(_getDietaryVal(idx, 'foodpref'))}</textarea>
+          <textarea id="f_diet_foodpref_${formIdx}" rows="2" placeholder="e.g. White meat, no pork…"
+            style="font-size:0.82rem;">${esc(_getDietaryVal(formIdx, 'foodpref'))}</textarea>
         </div>
         <div class="form-group">
           <label>Hot Beverage</label>
-          <input type="text" id="f_diet_bevhot_${idx}" value="${esc(_getDietaryVal(idx, 'bevhot'))}"
+          <input type="text" id="f_diet_bevhot_${formIdx}" value="${esc(_getDietaryVal(formIdx, 'bevhot'))}"
             placeholder="e.g. Coffee, Tea" style="font-size:0.82rem;">
         </div>
         <div class="form-group">
           <label>Cold Beverage</label>
-          <input type="text" id="f_diet_bevcold_${idx}" value="${esc(_getDietaryVal(idx, 'bevcold'))}"
+          <input type="text" id="f_diet_bevcold_${formIdx}" value="${esc(_getDietaryVal(formIdx, 'bevcold'))}"
             placeholder="e.g. Sparkling water" style="font-size:0.82rem;">
         </div>
         <div class="form-group full-width">
@@ -2872,7 +2927,7 @@ function renderDietaryPerPerson() {
             Server / Host Note
             <span style="background:#e65100;color:white;font-size:0.62rem;font-weight:700;padding:1px 7px;border-radius:4px;">FOR SERVERS</span>
           </label>
-          <input type="text" id="f_diet_remark_${idx}" value="${esc(_getDietaryVal(idx, 'remark'))}"
+          <input type="text" id="f_diet_remark_${formIdx}" value="${esc(_getDietaryVal(formIdx, 'remark'))}"
             placeholder="e.g. No red meat – very strict. Keep away from shellfish."
             style="font-size:0.82rem;border-color:rgba(230,81,0,0.35);">
         </div>
@@ -2891,17 +2946,43 @@ function getDietaryFromForm() {
   const spouseName = document.getElementById('f_spouse')?.value.trim() || '';
   const hasSpouse  = spouseName && spouseName !== '-' && spouseName !== '0';
   const addlPeople = _currentAdditionalGuests.filter(a => a.name && a.name.trim());
-  const count = 1 + (hasSpouse ? 1 : 0) + addlPeople.length;
+
+  // Index 0 = main guest, 1 = spouse (if exists), 1 or 2+ = additional guests
   const result = [];
-  for (let i = 0; i < count; i++) {
+
+  // 0 — main guest
+  result.push({
+    allergen: document.getElementById('f_diet_allergen_0')?.value.trim() || '',
+    foodpref: document.getElementById('f_diet_foodpref_0')?.value.trim() || '',
+    bevhot:   document.getElementById('f_diet_bevhot_0')?.value.trim()   || '',
+    bevcold:  document.getElementById('f_diet_bevcold_0')?.value.trim()  || '',
+    remark:   document.getElementById('f_diet_remark_0')?.value.trim()   || '',
+  });
+
+  if (hasSpouse) {
+    // 1 — spouse
     result.push({
-      allergen: document.getElementById(`f_diet_allergen_${i}`)?.value.trim() || '',
-      foodpref: document.getElementById(`f_diet_foodpref_${i}`)?.value.trim() || '',
-      bevhot:   document.getElementById(`f_diet_bevhot_${i}`)?.value.trim()   || '',
-      bevcold:  document.getElementById(`f_diet_bevcold_${i}`)?.value.trim()  || '',
-      remark:   document.getElementById(`f_diet_remark_${i}`)?.value.trim()   || '',
+      allergen: document.getElementById('f_diet_allergen_1')?.value.trim() || '',
+      foodpref: document.getElementById('f_diet_foodpref_1')?.value.trim() || '',
+      bevhot:   document.getElementById('f_diet_bevhot_1')?.value.trim()   || '',
+      bevcold:  document.getElementById('f_diet_bevcold_1')?.value.trim()  || '',
+      remark:   document.getElementById('f_diet_remark_1')?.value.trim()   || '',
     });
   }
+
+  // Additional guests — start at index 1 if no spouse, 2 if spouse exists
+  addlPeople.forEach((_, pi) => {
+    const formIdx = hasSpouse ? 2 + pi : 1 + pi;
+    result.push({
+      allergen: document.getElementById(`f_diet_allergen_${formIdx}`)?.value.trim() || '',
+      foodpref: document.getElementById(`f_diet_foodpref_${formIdx}`)?.value.trim() || '',
+      bevhot:   document.getElementById(`f_diet_bevhot_${formIdx}`)?.value.trim()   || '',
+      bevcold:  document.getElementById(`f_diet_bevcold_${formIdx}`)?.value.trim()  || '',
+      remark:   document.getElementById(`f_diet_remark_${formIdx}`)?.value.trim()   || '',
+    });
+  });
+
+  // Return only entries that have at least one non-empty field — no stale blank entries
   return result;
 }
 
@@ -3134,11 +3215,12 @@ function editGuest(id) {
     }, 20);
     _currentAdditionalGuests = (g.additionalGuests || []).map(a => ({...a}));
     renderAdditionalGuestsList(_currentAdditionalGuests);
-    // Restore dietary info per person
+    // Restore dietary info — rebuild _currentDietaryInfo matching current form structure
+    // Index 0=guest, 1=spouse (if present), 2+=addl (or 1+ if no spouse)
     _currentDietaryInfo = (g.dietaryInfo || []).map(d => ({...d}));
     // Migrate legacy single fields to index 0 if no dietaryInfo yet
     if (!_currentDietaryInfo.length && (g.allergen || g.foodpref || g.bevhot || g.bevcold)) {
-      _currentDietaryInfo[0] = { allergen: g.allergen||'', foodpref: g.foodpref||'', bevhot: g.bevhot||'', bevcold: g.bevcold||'' };
+      _currentDietaryInfo[0] = { allergen: g.allergen||'', foodpref: g.foodpref||'', bevhot: g.bevhot||'', bevcold: g.bevcold||'', remark: '' };
     }
     // Restore chaperone/driver selects and sync car details from driver register
     populateChaperoneDriverSelects();
@@ -3367,17 +3449,19 @@ function renderMeals() {
     const spouseValid = g.spouse && g.spouse !== '-' && g.spouse !== '0' && g.spouse.trim();
     const addlPeople  = (g.additionalGuests||[]).filter(a => a.name && a.name.trim());
 
-    const persons = [{ name: g.name, role: 'GUEST', idx: 0, pillClass: 'pill-hotel' }];
-    if (spouseValid) persons.push({ name: g.spouse, role: 'SPOUSE', idx: 1, pillClass: 'pill-spouse' });
-    addlPeople.forEach((ag, pi) => persons.push({ name: ag.name, role: ag.relation||'ADDL', idx: 2+pi, pillClass: 'pill-arrival' }));
+    const persons = [{ name: g.name, role: 'GUEST', diIdx: 0, pillClass: 'pill-hotel' }];
+    if (spouseValid) persons.push({ name: g.spouse, role: 'SPOUSE', diIdx: 1, pillClass: 'pill-spouse' });
+    addlPeople.forEach((ag, pi) => {
+      const diIdx = spouseValid ? 2 + pi : 1 + pi;
+      persons.push({ name: ag.name, role: ag.relation||'ADDL', diIdx, pillClass: 'pill-arrival' });
+    });
 
-    persons.forEach(({ name, role, idx, pillClass }) => {
-      // Get dietary from new dietaryInfo array, falling back to legacy fields for idx 0
-      const di = (g.dietaryInfo || [])[idx] || {};
-      const allergen = di.allergen || (idx===0 ? g.allergen||'' : '');
-      const foodpref = di.foodpref || (idx===0 ? g.foodpref||'' : '');
-      const bevhot   = di.bevhot   || (idx===0 ? g.bevhot||''   : '');
-      const bevcold  = di.bevcold  || (idx===0 ? g.bevcold||''  : '');
+    persons.forEach(({ name, role, diIdx, pillClass }) => {
+      const di = (g.dietaryInfo || [])[diIdx] || {};
+      const allergen = di.allergen || (diIdx===0 ? g.allergen||'' : '');
+      const foodpref = di.foodpref || (diIdx===0 ? g.foodpref||'' : '');
+      const bevhot   = di.bevhot   || (diIdx===0 ? g.bevhot||''   : '');
+      const bevcold  = di.bevcold  || (diIdx===0 ? g.bevcold||''  : '');
       const remark   = di.remark   || '';
       if (!allergen && !foodpref && !bevhot && !bevcold && !remark) return; // skip blank rows
       dtRowNum++;
@@ -3618,17 +3702,23 @@ function renderActivities() {
   syncDerivedArrays();
   const opts = document.getElementById('activityOptionsEditor');
   if (opts) {
-    opts.innerHTML = db.activityOptions.length ? db.activityOptions.map((a,i) => `
+    opts.innerHTML = db.activityOptions.length ? db.activityOptions.map((a,i) => {
+      const compCount = (db.activityCompanions?.[i] || []).length;
+      return `
       <div style="background:white;border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;min-width:220px;max-width:280px;flex:1;">
         <div style="font-weight:700;font-size:0.88rem;margin-bottom:4px;">${esc(a.name)}</div>
         <div style="font-size:0.74rem;color:var(--slate-light);margin-bottom:6px;">${fmtDate(a.date)}${a.date?' ('+dayOfWeek(a.date)+')':''} ${fmtTime(a.time)}</div>
         ${a.location ? `<div style="font-size:0.72rem;color:var(--slate);margin-bottom:4px;">📍 ${esc(a.location)}</div>` : ''}
         ${a.desc ? `<div style="font-size:0.74rem;color:var(--slate);margin-bottom:8px;">${esc(a.desc)}</div>` : ''}
-        <div style="display:flex;gap:6px;margin-top:8px;">
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" onclick="editActivityOption(${i})">✏️ Edit</button>
+          <button class="btn btn-outline btn-sm" onclick="openCompanionModal(${i})" style="color:var(--green);border-color:var(--green);">
+            👥 Companions ${compCount > 0 ? `<span style="background:var(--green);color:white;padding:1px 6px;border-radius:10px;font-size:0.65rem;margin-left:4px;">${compCount}</span>` : ''}
+          </button>
           <button class="btn btn-danger btn-sm" onclick="deleteActivityOption(${i})">🗑</button>
         </div>
-      </div>`).join('')
+      </div>`;
+    }).join('')
       : '<div style="color:var(--slate-light);font-size:0.82rem;padding:10px;">No activity options yet — click "+ Add Activity" to create one.</div>';
   }
 
@@ -4259,32 +4349,128 @@ function syncDriverFields(leg) {
 // ═══════════════════════════════════════════
 //  CHAPERONE VIEW
 // ═══════════════════════════════════════════
+// ── Shared row-drag state ─────────────────────────────────────────────────────
+let _rowReorderMode  = { chaperone: false, driver: false };
+let _rowDragSrcId    = null;
+let _rowDragType     = null; // 'chaperone' | 'driver'
+
+function toggleReorder(type) {
+  _rowReorderMode[type] = !_rowReorderMode[type];
+  const on = _rowReorderMode[type];
+  const btn     = document.getElementById(type === 'chaperone' ? 'chapReorderBtn' : 'drvReorderBtn');
+  const resetBtn= document.getElementById(type === 'chaperone' ? 'chapResetBtn'   : 'drvResetBtn');
+  if (btn) {
+    btn.textContent = on ? '✓ Done' : '⠿ Reorder';
+    btn.style.background  = on ? 'var(--green)' : '';
+    btn.style.color       = on ? 'white'        : '';
+    btn.style.borderColor = on ? 'var(--green)' : '';
+  }
+  if (resetBtn) resetBtn.style.display = on ? '' : 'none';
+  if (type === 'chaperone') renderChaperones(); else renderDrivers();
+  if (on) showToast('✋ Drag rows to reorder. Click "Done" when finished.', '');
+}
+
+function resetOrder(type) {
+  if (type === 'chaperone') {
+    db.chaperoneOrder = db.chaperones.map(c => c.id);
+  } else {
+    db.driverOrder = db.drivers.map(d => d.id);
+  }
+  saveDB();
+  if (type === 'chaperone') renderChaperones(); else renderDrivers();
+  showToast('↺ Order reset to default', '');
+}
+
+function onRowDragStart(e, id, type) {
+  _rowDragSrcId = id; _rowDragType = type;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', String(id));
+  setTimeout(() => {
+    const el = document.getElementById(`${type}row_${id}`);
+    if (el) el.style.opacity = '0.4';
+  }, 0);
+}
+function onRowDragOver(e, id, type) {
+  e.preventDefault();
+  if (id === _rowDragSrcId) return;
+  document.querySelectorAll('tr.row-drag-over').forEach(el => el.classList.remove('row-drag-over'));
+  const el = document.getElementById(`${type}row_${id}`);
+  if (el) el.classList.add('row-drag-over');
+}
+function onRowDragLeave(e) {
+  e.currentTarget.classList.remove('row-drag-over');
+}
+function onRowDrop(e, targetId, type) {
+  e.preventDefault();
+  document.querySelectorAll('tr.row-drag-over').forEach(el => el.classList.remove('row-drag-over'));
+  if (!_rowDragSrcId || targetId === _rowDragSrcId) return;
+  const order = type === 'chaperone' ? db.chaperoneOrder : db.driverOrder;
+  // Ensure order is complete
+  const allIds = type === 'chaperone' ? db.chaperones.map(c=>c.id) : db.drivers.map(d=>d.id);
+  allIds.forEach(id => { if (!order.includes(id)) order.push(id); });
+
+  const srcIdx = order.indexOf(_rowDragSrcId);
+  const tgtIdx = order.indexOf(targetId);
+  if (srcIdx < 0 || tgtIdx < 0) return;
+  order.splice(srcIdx, 1);
+  const newTgt = order.indexOf(targetId);
+  order.splice(newTgt, 0, _rowDragSrcId);
+  saveDB();
+  if (type === 'chaperone') renderChaperones(); else renderDrivers();
+}
+function onRowDragEnd(e, type) {
+  _rowDragSrcId = null; _rowDragType = null;
+  document.querySelectorAll('tr.row-drag-over').forEach(el => el.classList.remove('row-drag-over'));
+  if (e.target) e.target.style.opacity = '';
+}
+
 function renderChaperones() {
   const body = document.getElementById('chaperoneBody');
-  body.innerHTML = db.chaperones.map((c, i) => {
+  const reorder = _rowReorderMode.chaperone;
+
+  // Apply custom order
+  const ordered = [...db.chaperones].sort((a,b) => {
+    const ai = db.chaperoneOrder.indexOf(a.id), bi = db.chaperoneOrder.indexOf(b.id);
+    if (ai===-1&&bi===-1) return 0; if (ai===-1) return 1; if (bi===-1) return -1;
+    return ai - bi;
+  });
+
+  const dragStyle = reorder ? 'cursor:grab;' : '';
+  body.innerHTML = ordered.map((c, i) => {
     const assigned = db.guests.filter(g =>
       g.arr_chaperone_id == c.id || g.dep_chaperone_id == c.id
     ).map(g => esc(g.name)).join(', ') || '—';
-    const statusColor = c.status === 'Assigned' ? 'var(--green)' : c.status === 'Unavailable' ? 'var(--red)' : 'var(--slate-light)';
-    return `<tr>
+    // Auto-compute status from guest assignments
+    const isAssigned  = db.guests.some(g => g.arr_chaperone_id == c.id || g.dep_chaperone_id == c.id);
+    const autoStatus  = c.unavailable ? 'Unavailable' : isAssigned ? 'Assigned' : 'Free';
+    const statusColor = autoStatus === 'Assigned' ? 'var(--green)' : autoStatus === 'Unavailable' ? 'var(--red)' : 'var(--slate-light)';
+    const statusBg    = autoStatus === 'Assigned' ? 'rgba(45,122,79,0.1)' : autoStatus === 'Unavailable' ? 'rgba(197,48,48,0.1)' : 'transparent';
+    const dragAttrs = reorder ? `draggable="true"
+      ondragstart="onRowDragStart(event,${c.id},'chaperone')"
+      ondragover="onRowDragOver(event,${c.id},'chaperone')"
+      ondragleave="onRowDragLeave(event)"
+      ondrop="onRowDrop(event,${c.id},'chaperone')"
+      ondragend="onRowDragEnd(event,'chaperone')"` : '';
+    return `<tr id="chaperonerow_${c.id}" style="${dragStyle}" ${dragAttrs}>
+      <td style="text-align:center;color:var(--slate-light);font-size:1rem;padding:0 6px;">${reorder ? '⠿' : ''}</td>
       <td>${i+1}</td>
       <td class="td-name">${esc(c.name)}</td>
       <td style="font-size:0.78rem;">${esc(c.contact)||'—'}</td>
       <td style="font-size:0.78rem;">${esc(c.remark)||'—'}</td>
-      <td style="font-size:0.78rem; max-width:240px;">${assigned}</td>
-      <td><span style="font-size:0.72rem;font-weight:700;color:${statusColor};">${esc(c.status)}</span></td>
+      <td style="font-size:0.78rem;max-width:240px;">${assigned}</td>
+      <td><span style="font-size:0.72rem;font-weight:700;color:${statusColor};background:${statusBg};padding:2px 8px;border-radius:4px;">${autoStatus}</span></td>
       <td style="white-space:nowrap;">
         <button class="btn btn-outline btn-sm" onclick="editChaperone(${c.id})">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteChaperone(${c.id})">🗑</button>
       </td>
     </tr>`;
-  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--slate-light);">No chaperones yet.</td></tr>';
+  }).join('') || '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--slate-light);">No chaperones yet.</td></tr>';
 }
 
 function addChaperone() {
   document.getElementById('chapModalTitle').textContent = 'Add Chaperone';
   ['ch_name','ch_contact','ch_remark'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('ch_status').value = 'Available';
+  document.getElementById('ch_unavailable').checked = false;
   document.getElementById('ch_editId').value = '';
   document.getElementById('chaperoneModal').classList.add('open');
 }
@@ -4292,20 +4478,20 @@ function editChaperone(id) {
   const c = db.chaperones.find(x => x.id === id);
   if (!c) return;
   document.getElementById('chapModalTitle').textContent = 'Edit Chaperone';
-  document.getElementById('ch_name').value    = c.name||'';
-  document.getElementById('ch_contact').value = c.contact||'';
-  document.getElementById('ch_remark').value  = c.remark||'';
-  document.getElementById('ch_status').value  = c.status||'Available';
-  document.getElementById('ch_editId').value  = c.id;
+  document.getElementById('ch_name').value        = c.name||'';
+  document.getElementById('ch_contact').value     = c.contact||'';
+  document.getElementById('ch_remark').value      = c.remark||'';
+  document.getElementById('ch_unavailable').checked = c.unavailable || false;
+  document.getElementById('ch_editId').value      = c.id;
   document.getElementById('chaperoneModal').classList.add('open');
 }
 function saveChaperone() {
   const name = document.getElementById('ch_name').value.trim();
   if (!name) { showToast('Name is required', 'error'); return; }
   const obj = {
-    name, contact: document.getElementById('ch_contact').value.trim(),
-    remark: document.getElementById('ch_remark').value.trim(),
-    status: document.getElementById('ch_status').value
+    name, contact:     document.getElementById('ch_contact').value.trim(),
+    remark:            document.getElementById('ch_remark').value.trim(),
+    unavailable:       document.getElementById('ch_unavailable').checked
   };
   const editId = document.getElementById('ch_editId').value;
   if (editId) {
@@ -4314,6 +4500,8 @@ function saveChaperone() {
   } else {
     obj.id = Date.now();
     db.chaperones.push(obj);
+    if (!db.chaperoneOrder) db.chaperoneOrder = [];
+    db.chaperoneOrder.push(obj.id);
   }
   saveDB(); closeModal('chaperoneModal'); renderChaperones();
   showToast('✓ Chaperone saved', 'success');
@@ -4321,6 +4509,7 @@ function saveChaperone() {
 function deleteChaperone(id) {
   if (!confirm('Remove this chaperone?')) return;
   db.chaperones = db.chaperones.filter(x => x.id !== id);
+  if (db.chaperoneOrder) db.chaperoneOrder = db.chaperoneOrder.filter(x => x !== id);
   db.guests.forEach(g => {
     if (g.arr_chaperone_id == id) g.arr_chaperone_id = '';
     if (g.dep_chaperone_id == id) g.dep_chaperone_id = '';
@@ -4333,12 +4522,33 @@ function deleteChaperone(id) {
 // ═══════════════════════════════════════════
 function renderDrivers() {
   const body = document.getElementById('driverBody');
-  body.innerHTML = db.drivers.map((d, i) => {
+  const reorder = _rowReorderMode.driver;
+
+  // Apply custom order
+  const ordered = [...db.drivers].sort((a,b) => {
+    const ai = db.driverOrder.indexOf(a.id), bi = db.driverOrder.indexOf(b.id);
+    if (ai===-1&&bi===-1) return 0; if (ai===-1) return 1; if (bi===-1) return -1;
+    return ai - bi;
+  });
+
+  const dragStyle = reorder ? 'cursor:grab;' : '';
+  body.innerHTML = ordered.map((d, i) => {
     const assigned = db.guests.filter(g =>
       g.arr_driver_id == d.id || g.dep_driver_id == d.id
     ).map(g => esc(g.name)).join(', ') || '—';
-    const statusColor = d.status === 'Assigned' ? 'var(--green)' : d.status === 'Unavailable' ? 'var(--red)' : 'var(--slate-light)';
-    return `<tr>
+    // Auto-compute status from guest assignments
+    const isAssigned  = db.guests.some(g => g.arr_driver_id == d.id || g.dep_driver_id == d.id);
+    const autoStatus  = d.unavailable ? 'Unavailable' : isAssigned ? 'Assigned' : 'Free';
+    const statusColor = autoStatus === 'Assigned' ? 'var(--green)' : autoStatus === 'Unavailable' ? 'var(--red)' : 'var(--slate-light)';
+    const statusBg    = autoStatus === 'Assigned' ? 'rgba(45,122,79,0.1)' : autoStatus === 'Unavailable' ? 'rgba(197,48,48,0.1)' : 'transparent';
+    const dragAttrs = reorder ? `draggable="true"
+      ondragstart="onRowDragStart(event,${d.id},'driver')"
+      ondragover="onRowDragOver(event,${d.id},'driver')"
+      ondragleave="onRowDragLeave(event)"
+      ondrop="onRowDrop(event,${d.id},'driver')"
+      ondragend="onRowDragEnd(event,'driver')"` : '';
+    return `<tr id="driverrow_${d.id}" style="${dragStyle}" ${dragAttrs}>
+      <td style="text-align:center;color:var(--slate-light);font-size:1rem;padding:0 6px;">${reorder ? '⠿' : ''}</td>
       <td>${i+1}</td>
       <td class="td-name">${esc(d.name)}</td>
       <td style="font-size:0.78rem;">${esc(d.contact)||'—'}</td>
@@ -4346,20 +4556,20 @@ function renderDrivers() {
       <td style="font-size:0.78rem;">${esc(d.car)||'—'}</td>
       <td style="font-size:0.78rem;">${esc(d.color)||'—'}</td>
       <td style="font-size:0.75rem;color:var(--slate-light);">${esc(d.remark)||'—'}</td>
-      <td style="font-size:0.78rem;max-width:220px;">${assigned}</td>
-      <td><span style="font-size:0.72rem;font-weight:700;color:${statusColor};">${esc(d.status)}</span></td>
+      <td style="font-size:0.78rem;max-width:200px;">${assigned}</td>
+      <td><span style="font-size:0.72rem;font-weight:700;color:${statusColor};background:${statusBg};padding:2px 8px;border-radius:4px;">${autoStatus}</span></td>
       <td style="white-space:nowrap;">
         <button class="btn btn-outline btn-sm" onclick="editDriver(${d.id})">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteDriver(${d.id})">🗑</button>
       </td>
     </tr>`;
-  }).join('') || '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--slate-light);">No drivers yet.</td></tr>';
+  }).join('') || '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--slate-light);">No drivers yet.</td></tr>';
 }
 
 function addDriver() {
   document.getElementById('drvModalTitle').textContent = 'Add Driver';
   ['dr_name','dr_contact','dr_plate','dr_car','dr_color','dr_remark'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('dr_status').value = 'Free';
+  document.getElementById('dr_unavailable').checked = false;
   document.getElementById('dr_editId').value = '';
   document.getElementById('driverModal').classList.add('open');
 }
@@ -4367,14 +4577,14 @@ function editDriver(id) {
   const d = db.drivers.find(x => x.id === id);
   if (!d) return;
   document.getElementById('drvModalTitle').textContent = 'Edit Driver';
-  document.getElementById('dr_name').value    = d.name||'';
-  document.getElementById('dr_contact').value = d.contact||'';
-  document.getElementById('dr_plate').value   = d.plate||'';
-  document.getElementById('dr_car').value     = d.car||'';
-  document.getElementById('dr_color').value   = d.color||'';
-  document.getElementById('dr_remark').value  = d.remark||'';
-  document.getElementById('dr_status').value  = d.status||'Free';
-  document.getElementById('dr_editId').value  = d.id;
+  document.getElementById('dr_name').value        = d.name||'';
+  document.getElementById('dr_contact').value     = d.contact||'';
+  document.getElementById('dr_plate').value       = d.plate||'';
+  document.getElementById('dr_car').value         = d.car||'';
+  document.getElementById('dr_color').value       = d.color||'';
+  document.getElementById('dr_remark').value      = d.remark||'';
+  document.getElementById('dr_unavailable').checked = d.unavailable || false;
+  document.getElementById('dr_editId').value      = d.id;
   document.getElementById('driverModal').classList.add('open');
 }
 function saveDriver() {
@@ -4382,11 +4592,11 @@ function saveDriver() {
   if (!name) { showToast('Name is required', 'error'); return; }
   const obj = {
     name, contact: document.getElementById('dr_contact').value.trim(),
-    plate: document.getElementById('dr_plate').value.trim(),
-    car:   document.getElementById('dr_car').value.trim(),
-    color: document.getElementById('dr_color').value.trim(),
-    remark: document.getElementById('dr_remark').value.trim(),
-    status: document.getElementById('dr_status').value
+    plate:         document.getElementById('dr_plate').value.trim(),
+    car:           document.getElementById('dr_car').value.trim(),
+    color:         document.getElementById('dr_color').value.trim(),
+    remark:        document.getElementById('dr_remark').value.trim(),
+    unavailable:   document.getElementById('dr_unavailable').checked
   };
   const editId = document.getElementById('dr_editId').value;
   if (editId) {
@@ -4395,6 +4605,8 @@ function saveDriver() {
   } else {
     obj.id = Date.now();
     db.drivers.push(obj);
+    if (!db.driverOrder) db.driverOrder = [];
+    db.driverOrder.push(obj.id);
   }
   saveDB(); closeModal('driverModal'); renderDrivers();
   showToast('✓ Driver saved', 'success');
@@ -4402,6 +4614,7 @@ function saveDriver() {
 function deleteDriver(id) {
   if (!confirm('Remove this driver?')) return;
   db.drivers = db.drivers.filter(x => x.id !== id);
+  if (db.driverOrder) db.driverOrder = db.driverOrder.filter(x => x !== id);
   db.guests.forEach(g => {
     if (g.arr_driver_id == id) g.arr_driver_id = '';
     if (g.dep_driver_id == id) g.dep_driver_id = '';
@@ -4532,7 +4745,6 @@ function getRegisteredForSession(sessionKey) {
     // Include host team
     getHostsForMeal(mealIdx).forEach((h, hi) => registered.add(hostKey(mealIdx, hi)));
   } else if (evType === 'Activity') {
-    // Find which activity index this maps to in db.activityOptions
     const actIdx = db.activityOptions.findIndex(a =>
       a.name === ev.desc.trim() && a.date === ev.date
     );
@@ -4548,6 +4760,8 @@ function getRegisteredForSession(sessionKey) {
         });
       }
     });
+    // Include activity companions
+    getCompanionsForActivity(actIdx).forEach((c, ci) => registered.add(companionKey(actIdx, ci)));
   } else {
     return null; // sessions, devotions, etc. → show everyone
   }
@@ -4583,43 +4797,51 @@ function renderCheckin() {
         key: personKey(g.id,'addl',pi) });
     });
   });
-  // Add host team members from all meals (deduplicated by key)
-  const hostKeysAdded = new Set();
+  // Add host team members — one entry per meal assignment
   db.mealEvents.forEach((m, mi) => {
     getHostsForMeal(mi).forEach((h, hi) => {
-      const k = hostKey(mi, hi);
-      if (!hostKeysAdded.has(k)) {
-        hostKeysAdded.add(k);
-        allPeople.push({ guestId: null, type:'host', idx:hi, name:h.name,
-          sub: h.role ? `${h.role} — ${m.name}` : `Host — ${m.name}`,
-          role:'HOST', photo:'', avatarClass:'addl-av',
-          key: k });
-      }
+      allPeople.push({ guestId: null, type:'host', idx:hi, name:h.name,
+        sub: h.role ? `${h.role} — ${m.name}` : `Host — ${m.name}`,
+        role:'HOST', photo:'', avatarClass:'addl-av',
+        key: hostKey(mi, hi) });
+    });
+  });
+  // Add activity companions — one entry per activity assignment
+  db.activityOptions.forEach((a, ai) => {
+    getCompanionsForActivity(ai).forEach((c, ci) => {
+      allPeople.push({ guestId: null, type:'companion', idx:ci, name:c.name,
+        sub: c.role ? `${c.role} — ${a.name}` : `Companion — ${a.name}`,
+        role:'COMPANION', photo:'', avatarClass:'addl-av',
+        key: companionKey(ai, ci) });
     });
   });
 
   // Separate: expected (on registered list) vs all others (walk-in candidates)
+  // For general arrival, exclude hosts (they're not arriving guests)
+  const isGeneralArrival = sessionKey === '__arrival__';
   const expectedPeople = registered
     ? allPeople.filter(p => registered.has(p.key || `${p.guestId}|${p.type}|${p.idx}`))
-    : allPeople;
+    : allPeople.filter(p => !(isGeneralArrival && (p.role === 'HOST' || p.role === 'COMPANION')));
   const walkinCandidates = registered
     ? allPeople.filter(p => !registered.has(p.key || `${p.guestId}|${p.type}|${p.idx}`))
     : [];
 
   // Walk-ins already checked in (from log)
   const walkinKeys = Object.keys(db.checkinLog||{}).filter(k => {
-    // checkinLog keys in memory use | (only __ in Firestore storage)
     const sessionPrefix = sessionKey + '|';
     if (!k.startsWith(sessionPrefix)) return false;
-    const parts = k.split('|');
-    const pid = parts[1], ptype = parts[2], pidx = parts[3];
+    const personK = k.slice(sessionPrefix.length);
+    // host|mealIdx|hostIdx and comp|actIdx|compIdx are special keys
+    if (isHostKey(personK) || isCompanionKey(personK)) {
+      return !registered || !registered.has(personK);
+    }
+    const parts = personK.split('|');
+    const pid = parts[0], ptype = parts[1], pidx = parts[2];
     return !registered || !registered.has(`${pid}|${ptype}|${pidx}`);
   });
   const walkinPeople = walkinKeys.map(k => {
-    const parts = k.split('|');
-    const pid = parseInt(parts[1]), ptype = parts[2], pidx = parseInt(parts[3]);
-    const personK = `${pid}|${ptype}|${pidx}`;
-    return allPeople.find(p => (p.key && p.key === personK) || (p.guestId===pid && p.type===ptype && p.idx===pidx));
+    const personK = k.slice((sessionKey + '|').length);
+    return allPeople.find(p => p.key === personK);
   }).filter(Boolean);
 
   // Session info label
@@ -4724,13 +4946,14 @@ function checkinCard(p, sessionKey, isWalkin) {
   const av = p.photo
     ? `<img src="${p.photo}" alt="">`
     : `<span style="font-size:0.85rem;font-weight:700;">${initials(p.name)}</span>`;
-  const isHost    = p.role === 'HOST';
-  const pillColor = isWalkin ? '#7c3aed' : isHost ? 'var(--green)' : p.role==='GUEST' ? 'var(--navy)' : p.role==='SPOUSE' ? 'var(--gold)' : 'var(--blue)';
+  const isHost       = p.role === 'HOST';
+  const isCompanion  = p.role === 'COMPANION';
+  const pillColor = isWalkin ? '#7c3aed' : isHost ? 'var(--green)' : isCompanion ? '#0891b2' : p.role==='GUEST' ? 'var(--navy)' : p.role==='SPOUSE' ? 'var(--gold)' : 'var(--blue)';
   const pillLabel = isWalkin ? 'WALK-IN' : p.role;
-  const cardBg    = isWalkin ? (checkedIn ? '#f5f0ff' : '#faf7ff') : isHost ? 'rgba(45,122,79,0.04)' : '';
+  const cardBg    = isWalkin ? (checkedIn ? '#f5f0ff' : '#faf7ff') : isHost ? 'rgba(45,122,79,0.04)' : isCompanion ? 'rgba(8,145,178,0.04)' : '';
 
   return `<div class="checkin-card ${checkedIn ? 'checked-in' : ''}" style="${cardBg?'background:'+cardBg+';':''}${isWalkin?'border-color:rgba(124,58,237,0.3);':''}">
-    <div class="checkin-avatar ${p.avatarClass}" style="${isWalkin?'background:linear-gradient(135deg,#7c3aed,#4c1d95);':isHost?'background:linear-gradient(135deg,var(--green),#1a5c32);':''}">${av}</div>
+    <div class="checkin-avatar ${p.avatarClass}" style="${isWalkin?'background:linear-gradient(135deg,#7c3aed,#4c1d95);':isHost?'background:linear-gradient(135deg,var(--green),#1a5c32);':isCompanion?'background:linear-gradient(135deg,#0891b2,#0e7490);':''}">${av}</div>
     <div style="flex:1;min-width:0;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <div class="checkin-name">${esc(p.name)}</div>
@@ -4741,7 +4964,7 @@ function checkinCard(p, sessionKey, isWalkin) {
       ${checkedIn && timeStr ? `<div class="checkin-time">✓ ${isWalkin?'Walk-in':''} Checked in at ${timeStr} · ${dateStr}</div>` : ''}
     </div>
     <button class="checkin-btn ${checkedIn ? 'btn-undo' : 'btn-checkin'}"
-      style="${isWalkin&&!checkedIn?'background:#7c3aed;':isHost&&!checkedIn?'background:var(--green);':''}"
+      style="${isWalkin&&!checkedIn?'background:#7c3aed;':isHost&&!checkedIn?'background:var(--green);':isCompanion&&!checkedIn?'background:#0891b2;':''}"
       onclick="doCheckin('${sessionKey}','${pKey}')">
       ${checkedIn ? '↩ Undo' : isWalkin ? '🚶 Check In' : '✓ Check In'}
     </button>
@@ -4834,6 +5057,87 @@ function getHostsForMeal(mealIdx) {
   return (db.mealHosts?.[mealIdx] || []).filter(h => h.name && h.name.trim());
 }
 
+// ── Activity Companion key helpers ───────────────────────────────────────────
+function companionKey(actIdx, compIdx) { return `comp|${actIdx}|${compIdx}`; }
+function isCompanionKey(k) { return k.startsWith('comp|'); }
+function companionLabel(k) {
+  const parts = k.split('|');
+  const actIdx = parseInt(parts[1]), compIdx = parseInt(parts[2]);
+  return (db.activityCompanions?.[actIdx]?.[compIdx]?.name) || '?';
+}
+function companionSubLabel(k) {
+  const parts = k.split('|');
+  const actIdx = parseInt(parts[1]), compIdx = parseInt(parts[2]);
+  const c = db.activityCompanions?.[actIdx]?.[compIdx];
+  const a = db.activityOptions?.[actIdx];
+  return c?.role ? `${c.role} — ${a?.name || 'Activity'}` : `Companion — ${a?.name || 'Activity'}`;
+}
+function getCompanionsForActivity(actIdx) {
+  return (db.activityCompanions?.[actIdx] || []).filter(c => c.name && c.name.trim());
+}
+
+// ── Activity companion modal functions ───────────────────────────────────────
+function openCompanionModal(actIdx) {
+  const a = db.activityOptions[actIdx];
+  if (!a) return;
+  document.getElementById('companionModalTitle').textContent    = `Companions — ${a.name}`;
+  document.getElementById('companionModalSubtitle').textContent = `${fmtDate(a.date)} ${fmtTime(a.time)}`;
+  document.getElementById('companionModalActIdx').value         = actIdx;
+  renderCompanionListEditor(actIdx);
+  document.getElementById('companionModal').classList.add('open');
+}
+
+function renderCompanionListEditor(actIdx) {
+  const companions = (db.activityCompanions || {})[actIdx] || [];
+  const el = document.getElementById('companionListEditor');
+  if (!el) return;
+  if (!companions.length) {
+    el.innerHTML = '<div style="font-size:0.78rem;color:var(--slate-light);font-style:italic;">No companions yet. Click "+ Add Companion" below.</div>';
+    return;
+  }
+  el.innerHTML = companions.map((c, i) => `
+    <div style="display:flex;gap:8px;align-items:center;background:var(--ivory);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
+      <span style="font-size:0.8rem;font-weight:700;color:var(--navy);min-width:20px;">${i+1}</span>
+      <input type="text" value="${esc(c.name)}" placeholder="Name"
+        style="flex:2;border:none;background:transparent;font-size:0.84rem;outline:none;color:var(--navy);font-weight:600;"
+        oninput="updateCompanion(${actIdx},${i},'name',this.value)">
+      <input type="text" value="${esc(c.role||'')}" placeholder="Role (e.g. Guide, Driver)"
+        style="flex:1.5;border:none;background:transparent;font-size:0.78rem;outline:none;color:var(--slate-light);"
+        oninput="updateCompanion(${actIdx},${i},'role',this.value)">
+      <button onclick="removeCompanion(${actIdx},${i})"
+        style="background:none;border:none;cursor:pointer;color:var(--red);font-size:1rem;padding:0 4px;">✕</button>
+    </div>`).join('');
+}
+
+function addCompanionRow() {
+  const actIdx = parseInt(document.getElementById('companionModalActIdx').value);
+  if (!db.activityCompanions) db.activityCompanions = {};
+  if (!db.activityCompanions[actIdx]) db.activityCompanions[actIdx] = [];
+  db.activityCompanions[actIdx].push({ name: '', role: '' });
+  renderCompanionListEditor(actIdx);
+}
+
+function updateCompanion(actIdx, idx, field, val) {
+  if (!db.activityCompanions?.[actIdx]?.[idx]) return;
+  db.activityCompanions[actIdx][idx][field] = val;
+}
+
+function removeCompanion(actIdx, idx) {
+  if (!db.activityCompanions?.[actIdx]) return;
+  db.activityCompanions[actIdx].splice(idx, 1);
+  renderCompanionListEditor(actIdx);
+}
+
+function saveCompanions() {
+  const actIdx = parseInt(document.getElementById('companionModalActIdx').value);
+  if (!db.activityCompanions) db.activityCompanions = {};
+  db.activityCompanions[actIdx] = (db.activityCompanions[actIdx] || []).filter(c => c.name && c.name.trim());
+  saveDB();
+  closeModal('companionModal');
+  renderActivities();
+  showToast(`✓ Companions saved — ${db.activityCompanions[actIdx]?.length || 0} members`, 'success');
+}
+
 // ─── Helper: host person key ────────────────────────────────────────────────
 // host keys are: "host|mealIdx|hostIdx"
 function hostKey(mealIdx, hostIdx) { return `host|${mealIdx}|${hostIdx}`; }
@@ -4866,7 +5170,8 @@ function parsePersonKey(k) {
   return { guestId: parseInt(guestId), type, idx: parseInt(idx) };
 }
 function personLabel(k) {
-  if (isHostKey(k)) return hostLabel(k);
+  if (isHostKey(k))      return hostLabel(k);
+  if (isCompanionKey(k)) return companionLabel(k);
   const { guestId, type, idx } = parsePersonKey(k);
   const g = db.guests.find(x => x.id === guestId);
   if (!g) return '?';
@@ -4876,7 +5181,8 @@ function personLabel(k) {
   return '?';
 }
 function personSubLabel(k) {
-  if (isHostKey(k)) return hostSubLabel(k);
+  if (isHostKey(k))      return hostSubLabel(k);
+  if (isCompanionKey(k)) return companionSubLabel(k);
   const { guestId, type } = parsePersonKey(k);
   const g = db.guests.find(x => x.id === guestId);
   if (!g) return '';
@@ -5383,25 +5689,24 @@ function assignGuestToSelected(personK) {
 
 // ── Table detail panel ───────────────────────────────────────────────────────
 function getDietaryRemark(personK) {
-  // Returns the dietary remark string for a person, or '' if none
   if (!personK) return '';
-  if (isHostKey(personK)) return ''; // hosts don't have dietaryInfo
+  if (isHostKey(personK)) return '';
 
   const { guestId, type, idx } = parsePersonKey(personK);
   const g = db.guests.find(x => x.id === guestId);
   if (!g) return '';
 
-  // Determine the dietaryInfo index: 0=guest, 1=spouse, 2+=addl
+  // Compute the correct dietaryInfo index based on current guest data
   const spouseValid = g.spouse && g.spouse !== '-' && g.spouse !== '0' && g.spouse.trim();
   let diIdx = 0;
   if (type === 'guest')  diIdx = 0;
-  else if (type === 'spouse') diIdx = 1;
-  else if (type === 'addl')   diIdx = spouseValid ? 2 + idx : 1 + idx;
+  else if (type === 'spouse') diIdx = spouseValid ? 1 : -1; // -1 = no spouse
+  else if (type === 'addl')   diIdx = (spouseValid ? 2 : 1) + idx;
 
+  if (diIdx < 0 || diIdx >= (g.dietaryInfo||[]).length) return '';
   const di = (g.dietaryInfo || [])[diIdx] || {};
-  // Also check legacy allergen on main guest
   const al = di.allergen || (diIdx === 0 ? g.allergen || '' : '');
-  const rm = di.remark   || '';
+  const rm = di.remark || '';
   return [al, rm].filter(Boolean).join(' · ');
 }
 
