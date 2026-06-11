@@ -805,6 +805,49 @@
             <input type="date" id="f_checkout">
           </div>
         </div>
+        <!-- Extra stay options -->
+        <div style="margin-top:12px;padding:14px 16px;background:rgba(200,149,42,0.06);border:1px solid rgba(200,149,42,0.2);border-radius:8px;">
+          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gold);margin-bottom:12px;">Extra Stay Options</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="form-group" style="margin:0;">
+              <label style="display:flex;align-items:center;gap:6px;">
+                Early Check-in
+                <span style="font-size:0.62rem;color:var(--slate-light);font-weight:400;background:rgba(0,0,0,0.06);padding:1px 6px;border-radius:4px;">no room night charge</span>
+              </label>
+              <div style="display:flex;gap:8px;margin-top:4px;">
+                <input type="date" id="f_early_checkin_date" style="flex:1;min-width:0;">
+                <input type="time" id="f_early_checkin_time" style="width:120px;flex-shrink:0;">
+              </div>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label style="display:flex;align-items:center;gap:6px;">
+                Late Check-out
+                <span style="font-size:0.62rem;color:var(--slate-light);font-weight:400;background:rgba(0,0,0,0.06);padding:1px 6px;border-radius:4px;">no room night charge</span>
+              </label>
+              <div style="display:flex;gap:8px;margin-top:4px;">
+                <input type="date" id="f_late_checkout_date" style="flex:1;min-width:0;">
+                <input type="time" id="f_late_checkout_time" style="width:120px;flex-shrink:0;">
+              </div>
+            </div>
+            <div class="form-group" style="margin:0;grid-column:1/-1;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                ½ Day Extension
+                <span style="font-size:0.62rem;color:white;font-weight:700;background:var(--gold);padding:1px 7px;border-radius:4px;">+0.5 night</span>
+              </label>
+              <div style="display:flex;gap:20px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+                <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:0.84rem;cursor:pointer;">
+                  <input type="radio" name="f_halfday" id="f_halfday_none" value="" checked> None
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:0.84rem;cursor:pointer;">
+                  <input type="radio" name="f_halfday" id="f_halfday_morning" value="morning"> Morning <span style="font-size:0.72rem;color:var(--slate-light);">(arrival day)</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:0.84rem;cursor:pointer;">
+                  <input type="radio" name="f_halfday" id="f_halfday_evening" value="evening"> Evening <span style="font-size:0.72rem;color:var(--slate-light);">(departure day)</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- 2nd Stay toggle -->
         <div style="margin-top:14px;">
@@ -843,6 +886,49 @@
             <div class="form-group">
               <label>Check-out Date</label>
               <input type="date" id="f_checkout2">
+            </div>
+          </div>
+          <!-- Extra stay options (2nd stay) -->
+          <div style="margin-top:12px;padding:14px 16px;background:rgba(59,91,219,0.05);border:1px solid rgba(59,91,219,0.15);border-radius:8px;">
+            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--blue);margin-bottom:12px;">Extra Stay Options (2nd Stay)</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+              <div class="form-group" style="margin:0;">
+                <label style="display:flex;align-items:center;gap:6px;">
+                  Early Check-in
+                  <span style="font-size:0.62rem;color:var(--slate-light);font-weight:400;background:rgba(0,0,0,0.06);padding:1px 6px;border-radius:4px;">no charge</span>
+                </label>
+                <div style="display:flex;gap:8px;margin-top:4px;">
+                  <input type="date" id="f_early_checkin2_date" style="flex:1;min-width:0;">
+                  <input type="time" id="f_early_checkin2_time" style="width:120px;flex-shrink:0;">
+                </div>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="display:flex;align-items:center;gap:6px;">
+                  Late Check-out
+                  <span style="font-size:0.62rem;color:var(--slate-light);font-weight:400;background:rgba(0,0,0,0.06);padding:1px 6px;border-radius:4px;">no charge</span>
+                </label>
+                <div style="display:flex;gap:8px;margin-top:4px;">
+                  <input type="date" id="f_late_checkout2_date" style="flex:1;min-width:0;">
+                  <input type="time" id="f_late_checkout2_time" style="width:120px;flex-shrink:0;">
+                </div>
+              </div>
+              <div class="form-group" style="margin:0;grid-column:1/-1;">
+                <label style="display:flex;align-items:center;gap:8px;">
+                  ½ Day Extension
+                  <span style="font-size:0.62rem;color:white;font-weight:700;background:var(--gold);padding:1px 7px;border-radius:4px;">+0.5 night</span>
+                </label>
+                <div style="display:flex;gap:20px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+                  <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:0.84rem;cursor:pointer;">
+                    <input type="radio" name="f_halfday2" id="f_halfday2_none" value="" checked> None
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:0.84rem;cursor:pointer;">
+                    <input type="radio" name="f_halfday2" id="f_halfday2_morning" value="morning"> Morning <span style="font-size:0.72rem;color:var(--slate-light);">(arrival day)</span>
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:0.84rem;cursor:pointer;">
+                    <input type="radio" name="f_halfday2" id="f_halfday2_evening" value="evening"> Evening <span style="font-size:0.72rem;color:var(--slate-light);">(departure day)</span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1013,6 +1099,19 @@
   <div class="view" id="view-arrivals">
     <div class="section-title">Arrival Schedule</div>
     <div class="section-desc">All guests arriving in Singapore — sorted by date and time.</div>
+
+    <!-- AirLabs flight status bar -->
+    <div id="flightApiBar" style="background:var(--navy);color:white;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span style="font-size:0.8rem;font-weight:700;color:var(--gold-light);">✈ Live Flight Status</span>
+      <span style="font-size:0.72rem;color:rgba(255,255,255,0.6);">Powered by AirLabs —</span>
+      <a href="https://airlabs.co/account" target="_blank" style="font-size:0.72rem;color:var(--gold-light);">airlabs.co/account</a>
+      <input type="text" id="airlabsApiKey" placeholder="Paste your AirLabs API key…"
+        style="flex:1;min-width:220px;max-width:400px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);border-radius:6px;padding:6px 12px;color:white;font-size:0.82rem;font-family:Inter,sans-serif;"
+        oninput="saveApiKey(this.value)">
+      <button class="btn btn-gold btn-sm" onclick="refreshAllFlightStatus('arr')" id="refreshArrBtn">⟳ Refresh Status</button>
+      <span id="arrStatusMsg" style="font-size:0.72rem;color:rgba(255,255,255,0.55);"></span>
+    </div>
+
     <div class="toolbar">
       <div class="search-box">
         <span class="search-icon">🔍</span>
@@ -1023,19 +1122,10 @@
       <table id="arrivalsTable">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Date</th>
-            <th>Day</th>
-            <th>Time</th>
-            <th>Flight</th>
-            <th>Carrier</th>
-            <th>From</th>
-            <th>Terminal</th>
-            <th>Guest</th>
-            <th>Spouse</th>
-            <th>Chaperone</th>
-            <th>Driver</th>
-            <th>Remarks</th>
+            <th>#</th><th>Date</th><th>Day</th><th>Time</th><th>Flight</th>
+            <th>Carrier</th><th>From</th><th>Terminal</th>
+            <th style="color:var(--gold);">Live Status</th>
+            <th>Guest</th><th>Spouse</th><th>Chaperone</th><th>Driver</th><th>Remarks</th>
           </tr>
         </thead>
         <tbody id="arrivalsBody"></tbody>
@@ -1047,6 +1137,15 @@
   <div class="view" id="view-departures">
     <div class="section-title">Departure Schedule</div>
     <div class="section-desc">All guests departing Singapore — sorted by date and time.</div>
+
+    <!-- AirLabs flight status bar (shared key) -->
+    <div style="background:var(--navy);color:white;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span style="font-size:0.8rem;font-weight:700;color:var(--gold-light);">✈ Live Flight Status</span>
+      <span style="font-size:0.72rem;color:rgba(255,255,255,0.6);">Using same AirLabs API key as Arrivals tab</span>
+      <button class="btn btn-gold btn-sm" onclick="refreshAllFlightStatus('dep')" id="refreshDepBtn">⟳ Refresh Status</button>
+      <span id="depStatusMsg" style="font-size:0.72rem;color:rgba(255,255,255,0.55);"></span>
+    </div>
+
     <div class="toolbar">
       <div class="search-box">
         <span class="search-icon">🔍</span>
@@ -1057,19 +1156,10 @@
       <table id="departuresTable">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Date</th>
-            <th>Day</th>
-            <th>Time</th>
-            <th>Flight</th>
-            <th>Carrier</th>
-            <th>To</th>
-            <th>Terminal</th>
-            <th>Guest</th>
-            <th>Spouse</th>
-            <th>Chaperone</th>
-            <th>Driver</th>
-            <th>Remarks</th>
+            <th>#</th><th>Date</th><th>Day</th><th>Time</th><th>Flight</th>
+            <th>Carrier</th><th>To</th><th>Terminal</th>
+            <th style="color:var(--gold);">Live Status</th>
+            <th>Guest</th><th>Spouse</th><th>Chaperone</th><th>Driver</th><th>Remarks</th>
           </tr>
         </thead>
         <tbody id="departuresBody"></tbody>
@@ -1818,8 +1908,43 @@ function migrateDB() {
         allergen: g.allergen || '',
         foodpref: g.foodpref || '',
         bevhot:   g.bevhot   || '',
-        bevcold:  g.bevcold  || ''
+        bevcold:  g.bevcold  || '',
+        remark:   ''
       }];
+    }
+
+    // Clean stale dietaryInfo entries — trim array to match current people count
+    // Index 0=guest always exists; index 1=spouse only if spouse is set; 2+=addl
+    const hasSpouse = g.spouse && g.spouse !== '-' && g.spouse !== '0' && g.spouse.trim();
+    const addlCount = (g.additionalGuests || []).filter(a => a.name && a.name.trim()).length;
+    const maxIdx = 1 + (hasSpouse ? 1 : 0) + addlCount;
+    if (g.dietaryInfo.length > maxIdx) {
+      g.dietaryInfo = g.dietaryInfo.slice(0, maxIdx);
+    }
+
+    // Clean legacy prefixed allergen — e.g. "Sandra: no beef" stored in g.allergen
+    // If g.allergen contains "Name: ..." and Name is NOT the guest's first name, clear it
+    if (g.allergen) {
+      const colonIdx = g.allergen.indexOf(':');
+      if (colonIdx > 0 && colonIdx < 20) {
+        const prefix = g.allergen.substring(0, colonIdx).trim().toLowerCase();
+        const guestFirst = (g.name || '').split(' ').pop().toLowerCase(); // last word often first name in Asian names
+        const guestWords = (g.name || '').toLowerCase().split(' ');
+        if (!guestWords.some(w => w === prefix)) {
+          // Prefixed with someone else's name — clear the legacy field
+          g.allergen = '';
+        }
+      }
+    }
+    if (g.foodpref) {
+      const colonIdx = g.foodpref.indexOf(':');
+      if (colonIdx > 0 && colonIdx < 20) {
+        const prefix = g.foodpref.substring(0, colonIdx).trim().toLowerCase();
+        const guestWords = (g.name || '').toLowerCase().split(' ');
+        if (!guestWords.some(w => w === prefix)) {
+          g.foodpref = '';
+        }
+      }
     }
   });
   (db.events||[]).forEach(ev => { if (!ev.respondent) ev.respondent = ''; });
@@ -2513,17 +2638,53 @@ function renderGuestList() {
 }
 
 function updateStats() {
-  const total = db.guests.length;
-  const countries = [...new Set(db.guests.map(g=>g.country).filter(Boolean))].length;
-  const arriving = db.guests.filter(g=>g.arr_date).length;
+  const groups   = db.guests.length;
+  const countries = [...new Set(db.guests.map(g => g.country).filter(Boolean))].length;
+  const arriving  = db.guests.filter(g => g.arr_date).length;
+
+  // Total headcount: main guest + spouse + additional guests
+  let totalPax = 0;
+  let spouseCount = 0;
+  let addlCount = 0;
+  db.guests.forEach(g => {
+    totalPax++; // main guest
+    const hasSpouse = g.spouse && g.spouse !== '-' && g.spouse !== '0' && g.spouse.trim();
+    if (hasSpouse) { totalPax++; spouseCount++; }
+    const addl = (g.additionalGuests || []).filter(a => a.name && a.name.trim()).length;
+    totalPax += addl;
+    addlCount += addl;
+  });
+
   document.getElementById('statsRow').innerHTML = `
-    <div class="stat-card"><div class="stat-value">${total}</div><div class="stat-label">Total Guests</div></div>
-    <div class="stat-card gold"><div class="stat-value">${countries}</div><div class="stat-label">Countries</div></div>
-    <div class="stat-card"><div class="stat-value">${arriving}</div><div class="stat-label">Arrivals Tracked</div></div>
-    <div class="stat-card"><div class="stat-value">${db.mealEvents.length}</div><div class="stat-label">Meal Events</div></div>
-    <div class="stat-card"><div class="stat-value">${db.activityOptions.length}</div><div class="stat-label">Activities</div></div>
+    <div class="stat-card" style="border-left:3px solid var(--navy);">
+      <div class="stat-value">${groups}</div>
+      <div class="stat-label">Guest Groups</div>
+    </div>
+    <div class="stat-card gold" style="border-left:3px solid var(--gold);">
+      <div class="stat-value" style="color:var(--gold);">${totalPax}</div>
+      <div class="stat-label">Total Pax</div>
+      <div style="font-size:0.65rem;color:var(--slate-light);margin-top:3px;line-height:1.4;">
+        ${groups} guests${spouseCount ? ` · ${spouseCount} spouse${spouseCount!==1?'s':''}` : ''}${addlCount ? ` · ${addlCount} addl` : ''}
+      </div>
+    </div>
+    <div class="stat-card" style="border-left:3px solid #718096;">
+      <div class="stat-value">${countries}</div>
+      <div class="stat-label">Countries</div>
+    </div>
+    <div class="stat-card" style="border-left:3px solid var(--green);">
+      <div class="stat-value">${arriving}</div>
+      <div class="stat-label">Arrivals Tracked</div>
+    </div>
+    <div class="stat-card" style="border-left:3px solid var(--blue);">
+      <div class="stat-value">${db.mealEvents.length}</div>
+      <div class="stat-label">Meal Events</div>
+    </div>
+    <div class="stat-card" style="border-left:3px solid var(--gold-light);">
+      <div class="stat-value">${db.activityOptions.length}</div>
+      <div class="stat-label">Activities</div>
+    </div>
   `;
-  document.getElementById('headerGuestCount').textContent = `${total} Guests`;
+  document.getElementById('headerGuestCount').textContent = `${groups} Guests · ${totalPax} Pax`;
 }
 
 function updateCountryFilter() {
@@ -2808,10 +2969,11 @@ function openGuestModal(id) {
       addlPeople.forEach((ag,pi)=>persons.push({name:ag.name,role:ag.relation||'Addl Guest',diIdx:spouseValid?2+pi:1+pi}));
       const rows = persons.map(({name,role,diIdx})=>{
         const di=(g.dietaryInfo||[])[diIdx]||{};
-        const al=di.allergen||(diIdx===0?g.allergen||'':'');
-        const fp=di.foodpref||(diIdx===0?g.foodpref||'':'');
-        const bh=di.bevhot  ||(diIdx===0?g.bevhot  ||'':'');
-        const bc=di.bevcold ||(diIdx===0?g.bevcold ||'':'');
+        const hasNew = g.dietaryInfo && g.dietaryInfo.length > 0;
+        const al=di.allergen||((!hasNew&&diIdx===0)?g.allergen||'':'');
+        const fp=di.foodpref||((!hasNew&&diIdx===0)?g.foodpref||'':'');
+        const bh=di.bevhot  ||((!hasNew&&diIdx===0)?g.bevhot  ||'':'');
+        const bc=di.bevcold ||((!hasNew&&diIdx===0)?g.bevcold ||'':'');
         const rm=di.remark  ||'';
         if(!al&&!fp&&!bh&&!bc&&!rm) return '';
         return `<div class="info-item" style="grid-column:1/-1;background:var(--ivory);border-radius:8px;padding:10px 12px;">
@@ -3122,13 +3284,23 @@ function saveGuest(e) {
     hotel: document.getElementById('f_hotel').value.trim(),
     hotel_id: parseInt(document.getElementById('f_hotel_id').value) || '',
     room: document.getElementById('f_room').value.trim(),
-    checkin: document.getElementById('f_checkin').value,
+    checkin:  document.getElementById('f_checkin').value,
     checkout: document.getElementById('f_checkout').value,
+    early_checkin_date: document.getElementById('f_early_checkin_date')?.value  || '',
+    early_checkin_time: document.getElementById('f_early_checkin_time')?.value  || '',
+    late_checkout_date: document.getElementById('f_late_checkout_date')?.value  || '',
+    late_checkout_time: document.getElementById('f_late_checkout_time')?.value  || '',
+    halfday_ext:        document.querySelector('input[name="f_halfday"]:checked')?.value || '',
     hotel2: document.getElementById('f_hotel2').value.trim(),
     hotel2_id: parseInt(document.getElementById('f_hotel2_id').value) || '',
     room2: document.getElementById('f_room2').value.trim(),
-    checkin2: document.getElementById('f_checkin2').value,
+    checkin2:  document.getElementById('f_checkin2').value,
     checkout2: document.getElementById('f_checkout2').value,
+    early_checkin2_date: document.getElementById('f_early_checkin2_date')?.value  || '',
+    early_checkin2_time: document.getElementById('f_early_checkin2_time')?.value  || '',
+    late_checkout2_date: document.getElementById('f_late_checkout2_date')?.value  || '',
+    late_checkout2_time: document.getElementById('f_late_checkout2_time')?.value  || '',
+    halfday2_ext:        document.querySelector('input[name="f_halfday2"]:checked')?.value || '',
     additionalGuests: getAdditionalGuestsFromForm(),
     additional: getAdditionalGuestsFromForm().map(a=>a.name).join(', '),
     linkedGuestId: parseInt(document.getElementById('f_linkedGuestId')?.value) || null,
@@ -3141,6 +3313,8 @@ function saveGuest(e) {
     bevhot:   document.getElementById('f_bevhot').value.trim(),
     bevcold:  document.getElementById('f_bevcold').value.trim(),
     dietaryInfo: getDietaryFromForm(),
+    // Clear legacy single-person dietary fields — superseded by dietaryInfo array
+    allergen: '', foodpref: '', bevhot: '', bevcold: '',
     remark1: document.getElementById('f_remark1').value.trim(),
     remark2: document.getElementById('f_remark2').value.trim(),
     mealAttendance: mealAtt,
@@ -3187,13 +3361,20 @@ function editGuest(id) {
       'arr_flight','arr_carrier','arr_from','arr_date','arr_time','arr_terminal','arr_plate','arr_car','arr_color','arr_remarks',
       'dep_flight','dep_carrier','dep_to','dep_date','dep_time','dep_terminal','dep_plate','dep_car','dep_color','dep_remarks',
       'hotel','room','checkin','checkout',
+      'early_checkin_date','early_checkin_time','late_checkout_date','late_checkout_time',
       'hotel2','room2','checkin2','checkout2',
+      'early_checkin2_date','early_checkin2_time','late_checkout2_date','late_checkout2_time',
       'session1','respond1','session2','respond2',
       'allergen','foodpref','bevhot','bevcold','remark1','remark2'];
     fields.forEach(f => {
       const el = document.getElementById('f_' + f);
       if (el) el.value = g[f] || '';
     });
+    // Restore half-day extension radio buttons
+    const hd1 = g.halfday_ext  || '';
+    const hd2 = g.halfday2_ext || '';
+    document.querySelectorAll('input[name="f_halfday"]').forEach(r  => { r.checked = r.value === hd1; });
+    document.querySelectorAll('input[name="f_halfday2"]').forEach(r => { r.checked = r.value === hd2; });
     // Restore 2nd stay visibility
     if (g.hotel2 || g.checkin2) {
       toggleStay2(true);
@@ -3218,9 +3399,17 @@ function editGuest(id) {
     // Restore dietary info — rebuild _currentDietaryInfo matching current form structure
     // Index 0=guest, 1=spouse (if present), 2+=addl (or 1+ if no spouse)
     _currentDietaryInfo = (g.dietaryInfo || []).map(d => ({...d}));
-    // Migrate legacy single fields to index 0 if no dietaryInfo yet
+    // Migrate legacy single fields to index 0 ONLY if no dietaryInfo array yet
     if (!_currentDietaryInfo.length && (g.allergen || g.foodpref || g.bevhot || g.bevcold)) {
-      _currentDietaryInfo[0] = { allergen: g.allergen||'', foodpref: g.foodpref||'', bevhot: g.bevhot||'', bevcold: g.bevcold||'', remark: '' };
+      // Only migrate if it looks like the guest's own data (no "Name: " prefix)
+      const al = g.allergen || '';
+      const colonIdx = al.indexOf(':');
+      const isOwn = colonIdx < 0 || colonIdx >= 20;
+      if (isOwn) {
+        _currentDietaryInfo[0] = { allergen: al, foodpref: g.foodpref||'', bevhot: g.bevhot||'', bevcold: g.bevcold||'', remark: '' };
+      } else {
+        _currentDietaryInfo[0] = { allergen: '', foodpref: '', bevhot: g.bevhot||'', bevcold: g.bevcold||'', remark: '' };
+      }
     }
     // Restore chaperone/driver selects and sync car details from driver register
     populateChaperoneDriverSelects();
@@ -3354,7 +3543,199 @@ async function uploadPhotoToStorage(file) {
 // ═══════════════════════════════════════════
 //  ARRIVALS VIEW
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+//  LIVE FLIGHT STATUS — AirLabs API
+// ═══════════════════════════════════════════
+
+// In-memory cache: { 'SQ37': { status, dep_time_utc, arr_time_utc, dep_delayed, arr_delayed, dep_terminal, arr_terminal, dep_gate, arr_gate, fetchedAt } }
+const _flightCache = {};
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function getAirlabsKey() {
+  return localStorage.getItem('airlabs_api_key') || '';
+}
+function saveApiKey(val) {
+  localStorage.setItem('airlabs_api_key', val.trim());
+}
+
+// Normalise flight number to IATA format: "SQ 37" → "SQ37", "NH801(UA7935)" → "NH801"
+function normaliseFlightIata(raw) {
+  if (!raw) return '';
+  // Strip codeshare part in parentheses
+  const stripped = raw.replace(/\s*\(.*?\)/g, '').trim();
+  // Remove internal spaces: "SQ 37" → "SQ37"
+  return stripped.replace(/\s+/g, '');
+}
+
+// Fetch single flight from AirLabs
+async function fetchFlightStatus(flightIata) {
+  const key = getAirlabsKey();
+  if (!key) return null;
+  const norm = normaliseFlightIata(flightIata);
+  if (!norm) return null;
+
+  // Return cached result if fresh
+  const cached = _flightCache[norm];
+  if (cached && (Date.now() - cached.fetchedAt) < CACHE_TTL_MS) return cached;
+
+  try {
+    const url = `https://airlabs.co/api/v9/flight?flight_iata=${encodeURIComponent(norm)}&api_key=${encodeURIComponent(key)}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+    if (json.error) throw new Error(json.error.message || 'API error');
+    const r = json.response || json;
+    const result = {
+      status:        r.status      || '',
+      dep_time:      r.dep_time    || '',
+      arr_time:      r.arr_time    || '',
+      dep_delayed:   r.dep_delayed || 0,
+      arr_delayed:   r.arr_delayed || 0,
+      dep_terminal:  r.dep_terminal|| '',
+      arr_terminal:  r.arr_terminal|| '',
+      dep_gate:      r.dep_gate    || '',
+      arr_gate:      r.arr_gate    || '',
+      // Store the date of the flight the API returned so we can validate it
+      flight_date:   (r.dep_time || r.arr_time || '').substring(0, 10),
+      fetchedAt: Date.now()
+    };
+    _flightCache[norm] = result;
+    return result;
+  } catch(e) {
+    console.warn('AirLabs flight fetch failed for', norm, e.message);
+    return null;
+  }
+}
+
+// ── Date validation helper ───────────────────────────────────────────────────
+// Returns true if the API response date is within 1 day of the scheduled date
+// AirLabs returns the current/most-recent flight — if the event is days/months
+// away it will return yesterday's or today's flight with wrong status
+function flightDateMatches(apiFlightDate, scheduledDate) {
+  if (!apiFlightDate || !scheduledDate) return false;
+  const apiD  = new Date(apiFlightDate  + 'T00:00:00');
+  const schD  = new Date(scheduledDate  + 'T00:00:00');
+  const diffDays = Math.abs((apiD - schD) / 86400000);
+  return diffDays <= 1; // allow 1 day tolerance for overnight/date-line crossings
+}
+
+// Refresh all unique flights for arrivals or departures
+async function refreshAllFlightStatus(leg) {
+  const key = getAirlabsKey();
+  if (!key) {
+    showToast('⚠ Paste your AirLabs API key in the bar above first', 'error');
+    return;
+  }
+
+  const btnId = leg === 'arr' ? 'refreshArrBtn' : 'refreshDepBtn';
+  const msgId = leg === 'arr' ? 'arrStatusMsg'  : 'depStatusMsg';
+  const btn   = document.getElementById(btnId);
+  const msg   = document.getElementById(msgId);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Fetching…'; }
+  if (msg) msg.textContent = '';
+
+  // Collect unique flight numbers for this leg
+  const flightField = leg === 'arr' ? 'arr_flight' : 'dep_flight';
+  const unique = [...new Set(db.guests.map(g => normaliseFlightIata(g[flightField])).filter(Boolean))];
+
+  if (!unique.length) {
+    if (btn) { btn.disabled = false; btn.textContent = '⟳ Refresh Status'; }
+    if (msg) msg.textContent = 'No flights to check.';
+    return;
+  }
+
+  let done = 0, errors = 0;
+  // Fetch sequentially with a small delay to respect rate limits
+  for (const f of unique) {
+    const norm = normaliseFlightIata(f);
+    const cached = _flightCache[norm];
+    if (cached && (Date.now() - cached.fetchedAt) < CACHE_TTL_MS) { done++; continue; }
+    try {
+      await fetchFlightStatus(f);
+      done++;
+    } catch(e) { errors++; }
+    // Small delay between requests
+    await new Promise(r => setTimeout(r, 400));
+    if (msg) msg.textContent = `${done}/${unique.length} fetched…`;
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '⟳ Refresh Status'; }
+  const lastUpdate = new Date().toLocaleTimeString('en-SG', {hour:'2-digit', minute:'2-digit'});
+  if (msg) msg.textContent = `✓ Updated ${done} flight${done!==1?'s':''} at ${lastUpdate}${errors?' · ⚠ '+errors+' failed':''}`;
+
+  if (leg === 'arr') renderArrivals(); else renderDepartures();
+}
+
+// Render a live status badge — scheduledDate is the guest's booked flight date
+function liveStatusBadge(flightRaw, leg, scheduledDate) {
+  if (!flightRaw) return '<td style="color:var(--slate-light);font-size:0.72rem;">—</td>';
+  const norm = normaliseFlightIata(flightRaw);
+  const d    = _flightCache[norm];
+  if (!d) {
+    return `<td><span style="font-size:0.7rem;color:var(--slate-light);">—</span></td>`;
+  }
+
+  // ── Date validation: AirLabs returns the nearest matching flight ──────────
+  // If the scheduled date doesn't match the API date, this is a different day's
+  // flight (e.g. today's SQ37, not the July 2026 SQ37).
+  // In that case show Scheduled with the booked time — don't mislead with stale status.
+  const dateValid = flightDateMatches(d.flight_date, scheduledDate);
+  if (!dateValid && scheduledDate) {
+    // Future flight — show Scheduled with note
+    const daysUntil = scheduledDate
+      ? Math.ceil((new Date(scheduledDate+'T00:00:00') - new Date()) / 86400000)
+      : null;
+    const note = daysUntil !== null && daysUntil > 0
+      ? `<div style="font-size:0.62rem;color:var(--slate-light);margin-top:1px;">in ${daysUntil}d</div>`
+      : '';
+    return `<td>
+      <span style="display:inline-flex;align-items:center;background:rgba(59,91,219,0.08);color:var(--blue);font-size:0.7rem;font-weight:600;padding:3px 8px;border-radius:5px;">
+        Scheduled
+      </span>${note}
+    </td>`;
+  }
+
+  const statusMap = {
+    'scheduled':   { label:'Scheduled',  bg:'rgba(59,91,219,0.1)',  color:'var(--blue)'  },
+    'en-route':    { label:'En Route ✈', bg:'rgba(45,122,79,0.12)', color:'var(--green)' },
+    'landed':      { label:'Landed ✓',   bg:'rgba(45,122,79,0.2)',  color:'var(--green)', bold:true },
+    'cancelled':   { label:'Cancelled',  bg:'rgba(197,48,48,0.12)', color:'var(--red)'   },
+    'diverted':    { label:'Diverted',   bg:'rgba(197,48,48,0.12)', color:'var(--red)'   },
+    'delayed':     { label:'Delayed',    bg:'rgba(230,81,0,0.12)',  color:'#e65100'      },
+    'active':      { label:'Active ✈',  bg:'rgba(45,122,79,0.12)', color:'var(--green)' },
+    'incident':    { label:'Incident',   bg:'rgba(197,48,48,0.2)',  color:'var(--red)'   },
+  };
+  const s  = (d.status || '').toLowerCase();
+  const st = statusMap[s] || { label: d.status || '?', bg:'var(--border)', color:'var(--slate)' };
+
+  const delay = leg === 'arr' ? d.arr_delayed : d.dep_delayed;
+  const delayBadge = delay && delay > 0
+    ? `<span style="font-size:0.65rem;color:#e65100;margin-left:4px;">+${delay}m</span>`
+    : '';
+
+  const gate = leg === 'arr' ? d.arr_gate : d.dep_gate;
+  const gateBadge = gate
+    ? `<span style="font-size:0.65rem;color:var(--slate);margin-left:4px;">Gate ${esc(gate)}</span>`
+    : '';
+
+  const actualTime = leg === 'arr' ? d.arr_time : d.dep_time;
+  const timeNote = actualTime
+    ? `<div style="font-size:0.65rem;color:var(--slate-light);margin-top:2px;">${actualTime.slice(11,16)||''}</div>`
+    : '';
+
+  return `<td>
+    <span style="display:inline-flex;align-items:center;background:${st.bg};color:${st.color};font-size:0.7rem;font-weight:${st.bold?'700':'600'};padding:3px 8px;border-radius:5px;white-space:nowrap;">
+      ${st.label}
+    </span>${delayBadge}${gateBadge}
+    ${timeNote}
+  </td>`;
+}
+
 function renderArrivals() {
+  // Restore saved API key into the input
+  const keyEl = document.getElementById('airlabsApiKey');
+  if (keyEl && !keyEl.value) keyEl.value = getAirlabsKey();
+
   const q = (document.getElementById('arrSearch')?.value || '').toLowerCase();
   const sorted = [...db.guests].filter(g => g.arr_date || g.arr_flight).sort((a,b) => {
     const ad = (a.arr_date||'9999') + (a.arr_time||'');
@@ -3373,6 +3754,7 @@ function renderArrivals() {
       <td style="font-size:0.78rem;">${esc(g.arr_carrier)||'—'}</td>
       <td style="font-size:0.78rem;">${esc(g.arr_from)||'—'}</td>
       <td>${terminalBadge(g.arr_terminal, !!g.arr_flight)}</td>
+      ${liveStatusBadge(g.arr_flight, 'arr', g.arr_date)}
       <td class="td-name">${esc(g.name)}</td>
       <td style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
       <td style="font-size:0.78rem;">${esc(chapName(g.arr_chaperone_id))||'—'}</td>
@@ -3381,9 +3763,6 @@ function renderArrivals() {
     </tr>`).join('');
 }
 
-// ═══════════════════════════════════════════
-//  DEPARTURES VIEW
-// ═══════════════════════════════════════════
 function renderDepartures() {
   const q = (document.getElementById('depSearch')?.value || '').toLowerCase();
   const sorted = [...db.guests].filter(g => g.dep_date || g.dep_flight).sort((a,b) => {
@@ -3403,6 +3782,7 @@ function renderDepartures() {
       <td style="font-size:0.78rem;">${esc(g.dep_carrier)||'—'}</td>
       <td style="font-size:0.78rem;">${esc(g.dep_to)||'—'}</td>
       <td>${terminalBadge(g.dep_terminal, !!g.dep_flight)}</td>
+      ${liveStatusBadge(g.dep_flight, 'dep', g.dep_date)}
       <td class="td-name">${esc(g.name)}</td>
       <td style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
       <td style="font-size:0.78rem;">${esc(chapName(g.dep_chaperone_id))||'—'}</td>
@@ -3458,10 +3838,12 @@ function renderMeals() {
 
     persons.forEach(({ name, role, diIdx, pillClass }) => {
       const di = (g.dietaryInfo || [])[diIdx] || {};
-      const allergen = di.allergen || (diIdx===0 ? g.allergen||'' : '');
-      const foodpref = di.foodpref || (diIdx===0 ? g.foodpref||'' : '');
-      const bevhot   = di.bevhot   || (diIdx===0 ? g.bevhot||''   : '');
-      const bevcold  = di.bevcold  || (diIdx===0 ? g.bevcold||''  : '');
+      // Only fall back to legacy g.allergen if dietaryInfo array doesn't exist yet (pre-migration data)
+      const hasNewDietary = g.dietaryInfo && g.dietaryInfo.length > 0;
+      const allergen = di.allergen || ((!hasNewDietary && diIdx===0) ? g.allergen||'' : '');
+      const foodpref = di.foodpref || ((!hasNewDietary && diIdx===0) ? g.foodpref||'' : '');
+      const bevhot   = di.bevhot   || ((!hasNewDietary && diIdx===0) ? g.bevhot||''   : '');
+      const bevcold  = di.bevcold  || ((!hasNewDietary && diIdx===0) ? g.bevcold||''  : '');
       const remark   = di.remark   || '';
       if (!allergen && !foodpref && !bevhot && !bevcold && !remark) return; // skip blank rows
       dtRowNum++;
@@ -4102,21 +4484,35 @@ function renderHotel() {
     const linkedGuest = g.linkedGuestId ? db.guests.find(x => x.id === g.linkedGuestId) : null;
     if (linkedGuest) shownIds.add(linkedGuest.id); // prevent linked guest from rendering separately
 
-    function calcNights(cin, cout) {
-      if (!cin || !cout) return { val: '—', warn: false };
+    function calcNights(cin, cout, halfdayExt) {
+      if (!cin || !cout) return { val: '—', warn: false, num: 0 };
       const n = Math.round((new Date(cout) - new Date(cin)) / 86400000);
-      if (n < 0) return { val: `<span style="color:var(--red);font-weight:700;" title="Check-out before check-in">⚠ ${Math.abs(n)}d?</span>`, warn: true };
-      if (n === 0) return { val: `<span style="color:var(--gold);">0</span>`, warn: false };
-      return { val: `<strong>${n}</strong>`, warn: false };
+      if (n < 0) return { val: `<span style="color:var(--red);font-weight:700;" title="Check-out before check-in">⚠ ${Math.abs(n)}d?</span>`, warn: true, num: 0 };
+      const half = halfdayExt ? 0.5 : 0;
+      const total = n + half;
+      const halfLabel = half ? `<span style="font-size:0.68rem;color:var(--gold);margin-left:4px;">+½</span>` : '';
+      if (n === 0 && !half) return { val: `<span style="color:var(--gold);">0</span>`, warn: false, num: 0 };
+      return { val: `<strong>${total % 1 === 0 ? total : n}${halfLabel}</strong>`, warn: false, num: total };
     }
 
-    const n1 = calcNights(g.checkin, g.checkout);
-    const n2 = calcNights(g.checkin2, g.checkout2);
+    const n1 = calcNights(g.checkin, g.checkout, g.halfday_ext);
+    const n2 = calcNights(g.checkin2, g.checkout2, g.halfday2_ext);
     const hotelDisplay  = g.hotel_id  ? (db.hotels.find(h=>h.id==g.hotel_id)?.name  || g.hotel  || '—') : (g.hotel  || '—');
     const hotel2Display = g.hotel2_id ? (db.hotels.find(h=>h.id==g.hotel2_id)?.name || g.hotel2 || '') : (g.hotel2 || '');
     const addlNames = (g.additionalGuests||[]).map(a=>esc(a.name)).join(', ') || '—';
     const has2nd = hotel2Display || g.checkin2;
     rowNum++;
+
+    // Extra stay badges
+    function extraBadges(earlyDate, earlyTime, lateDate, lateTime, halfdayExt, stay) {
+      const badges = [];
+      if (earlyDate) badges.push(`<span style="background:rgba(45,122,79,0.1);color:var(--green);font-size:0.65rem;font-weight:600;padding:1px 7px;border-radius:4px;white-space:nowrap;">▶ Early CI ${earlyTime||earlyDate}</span>`);
+      if (lateDate)  badges.push(`<span style="background:rgba(59,91,219,0.1);color:var(--blue);font-size:0.65rem;font-weight:600;padding:1px 7px;border-radius:4px;white-space:nowrap;">◀ Late CO ${lateTime||lateDate}</span>`);
+      if (halfdayExt) badges.push(`<span style="background:rgba(200,149,42,0.12);color:var(--gold);font-size:0.65rem;font-weight:600;padding:1px 7px;border-radius:4px;white-space:nowrap;">½ ${halfdayExt==='morning'?'Morning':'Evening'} +0.5</span>`);
+      return badges.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">${badges.join('')}</div>` : '';
+    }
+    const extra1 = extraBadges(g.early_checkin_date, g.early_checkin_time, g.late_checkout_date, g.late_checkout_time, g.halfday_ext);
+    const extra2 = extraBadges(g.early_checkin2_date, g.early_checkin2_time, g.late_checkout2_date, g.late_checkout2_time, g.halfday2_ext);
 
     // Name cell — show linked guest below if applicable
     const nameCell = linkedGuest
@@ -4133,7 +4529,7 @@ function renderHotel() {
       <td rowspan="${rowSpan}" class="td-name">${nameCell}</td>
       <td rowspan="${rowSpan}" style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
       <td rowspan="${rowSpan}" style="font-size:0.75rem;">${addlNames}</td>
-      <td><span class="pill pill-hotel" style="font-size:0.68rem;">1st</span> ${esc(hotelDisplay)}</td>
+      <td><span class="pill pill-hotel" style="font-size:0.68rem;">1st</span> ${esc(hotelDisplay)}${extra1}</td>
       <td>${esc(g.room)||'—'} ${roomNoteCell}</td>
       <td>${fmtDate(g.arr_date)}<br><span style="font-size:0.72rem;color:var(--slate-light);">${fmtTime(g.arr_time)}</span></td>
       <td>${fmtDate(g.checkin)||'—'}</td>
@@ -4145,7 +4541,7 @@ function renderHotel() {
 
     if (has2nd) {
       html += `<tr style="background:#f0f4ff;">
-        <td style="background:#f0f4ff;"><span class="pill pill-arrival" style="font-size:0.68rem;">2nd</span> ${esc(hotel2Display)||'—'}</td>
+        <td style="background:#f0f4ff;"><span class="pill pill-arrival" style="font-size:0.68rem;">2nd</span> ${esc(hotel2Display)||'—'}${extra2}</td>
         <td style="background:#f0f4ff;">${esc(g.room2)||'—'}</td>
         <td style="background:#f0f4ff;">—</td>
         <td style="background:#f0f4ff;">${fmtDate(g.checkin2)||'—'}</td>
@@ -4230,11 +4626,14 @@ function toggleStay2(show) {
   document.getElementById('btn_add_stay2').style.display   = show ? 'none' : '';
   document.getElementById('btn_remove_stay2').style.display = show ? '' : 'none';
   if (!show) {
-    ['f_hotel2','f_room2','f_checkin2','f_checkout2'].forEach(id => {
+    ['f_hotel2','f_room2','f_checkin2','f_checkout2',
+     'f_early_checkin2_date','f_early_checkin2_time',
+     'f_late_checkout2_date','f_late_checkout2_time'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     const sel = document.getElementById('f_hotel2_id');
     if (sel) sel.value = '';
+    document.querySelectorAll('input[name="f_halfday2"]').forEach(r => { r.checked = r.value === ''; });
   }
 }
 
@@ -5705,7 +6104,8 @@ function getDietaryRemark(personK) {
 
   if (diIdx < 0 || diIdx >= (g.dietaryInfo||[]).length) return '';
   const di = (g.dietaryInfo || [])[diIdx] || {};
-  const al = di.allergen || (diIdx === 0 ? g.allergen || '' : '');
+  const hasNew = g.dietaryInfo && g.dietaryInfo.length > 0;
+  const al = di.allergen || ((!hasNew && diIdx === 0) ? g.allergen || '' : '');
   const rm = di.remark || '';
   return [al, rm].filter(Boolean).join(' · ');
 }
@@ -5815,7 +6215,7 @@ function openSeatPicker(seatId) { openSeatPickerSVG(seatId); }
 // ═══════════════════════════════════════════
 
 // ── Set your team password here ──────────────
-const APP_PASSWORD = 'PYLJJ';
+const APP_PASSWORD = 'APS2026';
 // ─────────────────────────────────────────────
 
 const SESSION_KEY = 'aps2026_auth';
