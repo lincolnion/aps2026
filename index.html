@@ -525,7 +525,28 @@
   }
   .seat-chip:hover { background: var(--gold); color: white; border-color: var(--gold); }
   .seat-chip.assigned { background: var(--green-bg); border-color: rgba(45,122,79,0.4); color: var(--green); }
-  .guest-chip {
+  .linked-guest-card {
+    border-color: rgba(200,149,42,0.4) !important;
+    box-shadow: 0 0 0 1.5px rgba(200,149,42,0.2), var(--shadow-sm) !important;
+  }
+  .guest-card[draggable="true"] { cursor: grab; }
+  .guest-card[draggable="true"]:active { cursor: grabbing; }
+  .guest-card.drag-over {
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 0 2.5px rgba(200,149,42,0.4), var(--shadow-md) !important;
+    transform: scale(1.02);
+  }
+  .guest-card.dragging {
+    opacity: 0.4;
+    transform: scale(0.97);
+  }
+  .reorder-mode-badge {
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--gold);color:white;
+    font-size:0.72rem;font-weight:700;padding:5px 14px;border-radius:20px;
+    cursor:pointer;transition:all 0.15s;
+  }
+  .reorder-mode-badge:hover { background:#a07020; }
     display: flex; align-items: center; gap: 7px; padding: 6px 10px;
     background: white; border: 1.5px solid var(--border); border-radius: 8px;
     font-size: 0.78rem; font-weight: 600; color: var(--navy);
@@ -597,6 +618,8 @@
         <option value="">All Countries</option>
       </select>
       <div class="toolbar-right">
+        <button class="btn btn-outline btn-sm" id="reorderToggleBtn" onclick="toggleReorderMode()" title="Drag cards to reorder">⠿ Reorder</button>
+        <button class="btn btn-outline btn-sm" onclick="resetGuestOrder()" title="Reset to original order" id="resetOrderBtn" style="display:none;">↺ Reset Order</button>
         <button class="btn btn-gold btn-sm" onclick="showView('add-guest')">+ Add Guest</button>
       </div>
     </div>
@@ -635,6 +658,16 @@
               <div class="form-group">
                 <label>Spouse / Partner</label>
                 <input type="text" id="f_spouse" placeholder="e.g. Sis Myrna" oninput="renderFormCheckboxes()">
+              </div>
+              <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;">
+                  Linked Guest
+                  <span style="background:rgba(200,149,42,0.15);color:var(--gold);font-size:0.62rem;font-weight:700;padding:1px 7px;border-radius:4px;">ROOM SHARE</span>
+                </label>
+                <select id="f_linkedGuestId" style="font-size:0.84rem;">
+                  <option value="">— None —</option>
+                </select>
+                <div style="font-size:0.7rem;color:var(--slate-light);margin-top:4px;">Link guests sharing a room (e.g. a couple travelling as separate guests). Room nights counted once for the pair.</div>
               </div>
               <div class="form-group">
                 <label>Additional Guest(s)</label>
@@ -1634,7 +1667,8 @@ let db = {
   hotels: [],
   checkinLog: {},
   seatingPlans: {},
-  mealHosts: {}   // { mealIdx: [{ name, role }] }  — host team per meal
+  mealHosts: {},
+  guestOrder: []   // custom display order — array of guest IDs
 };
 // ── Computed getters: derive meals/activities from db.events (single source of truth) ──
 function getMealEvents() {
@@ -1706,6 +1740,9 @@ function migrateDB() {
   if (!db.checkinLog)   db.checkinLog   = {};
   if (!db.seatingPlans) db.seatingPlans = {};
   if (!db.mealHosts)    db.mealHosts    = {};
+  if (!db.guestOrder || !db.guestOrder.length) {
+    db.guestOrder = db.guests.map(g => g.id);
+  }
   (db.guests||[]).forEach(g => {
     if (!g.mealSpouseAttendance)          g.mealSpouseAttendance          = Array(mLen).fill(false);
     // mealAdditionalAttendance: now array-of-arrays [personIdx][mealIdx]
@@ -1737,6 +1774,7 @@ function migrateDB() {
     if (!g.room2)     g.room2     = '';
     if (!g.checkin2)  g.checkin2  = '';
     if (!g.checkout2) g.checkout2 = '';
+    if (g.linkedGuestId === undefined) g.linkedGuestId = null;
     // Migrate legacy single dietary fields → dietaryInfo[0]
     if (!g.dietaryInfo) {
       g.dietaryInfo = [{
@@ -2339,9 +2377,12 @@ function showView(name) {
   if (name === 'add-guest') {
     populateHotelSelect();
     populateChaperoneDriverSelects();
+    const editId = parseInt(document.getElementById('editGuestId').value) || null;
+    populateLinkedGuestSelect(editId);
     renderFormCheckboxes();
     if (!document.getElementById('editGuestId').value) {
       _currentAdditionalGuests = [];
+      _currentDietaryInfo = [];
       renderAdditionalGuestsList([]);
     }
   }
@@ -2439,11 +2480,50 @@ function updateCountryFilter() {
   sel.value = cur;
 }
 
+let _reorderMode = false;
+let _dragSrcId   = null;
+
+function toggleReorderMode() {
+  _reorderMode = !_reorderMode;
+  const btn = document.getElementById('reorderToggleBtn');
+  const resetBtn = document.getElementById('resetOrderBtn');
+  if (btn) {
+    btn.textContent = _reorderMode ? '✓ Done Reordering' : '⠿ Reorder';
+    btn.style.background    = _reorderMode ? 'var(--green)' : '';
+    btn.style.color         = _reorderMode ? 'white' : '';
+    btn.style.borderColor   = _reorderMode ? 'var(--green)' : '';
+  }
+  if (resetBtn) resetBtn.style.display = _reorderMode ? '' : 'none';
+  filterGuests();
+  if (_reorderMode) showToast('✋ Drag cards to reorder. Click "Done Reordering" when finished.', '');
+}
+
+function resetGuestOrder() {
+  db.guestOrder = db.guests.map(g => g.id);
+  saveDB();
+  filterGuests();
+  showToast('↺ Order reset to default', '');
+}
+
 function filterGuests() {
-  const q = (document.getElementById('guestSearch').value || '').toLowerCase();
-  const country = document.getElementById('filterCountry').value;
-  const filtered = db.guests.filter(g => {
-    const matchQ = !q || (g.name||'').toLowerCase().includes(q) || (g.spouse||'').toLowerCase().includes(q) || (g.country||'').toLowerCase().includes(q) || (g.title||'').toLowerCase().includes(q);
+  const q       = (document.getElementById('guestSearch')?.value || '').toLowerCase();
+  const country = document.getElementById('filterCountry')?.value || '';
+
+  // Apply custom order
+  const ordered = [...db.guests].sort((a, b) => {
+    const ai = db.guestOrder.indexOf(a.id);
+    const bi = db.guestOrder.indexOf(b.id);
+    if (ai === -1 && bi === -1) return 0;
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+
+  const filtered = ordered.filter(g => {
+    const matchQ = !q || (g.name||'').toLowerCase().includes(q)
+      || (g.spouse||'').toLowerCase().includes(q)
+      || (g.country||'').toLowerCase().includes(q)
+      || (g.title||'').toLowerCase().includes(q);
     const matchC = !country || g.country === country;
     return matchQ && matchC;
   });
@@ -2458,12 +2538,55 @@ function renderGuestCards(guests) {
   }
   grid.innerHTML = guests.map(g => {
     const av = g.photo ? `<img src="${g.photo}" alt="${esc(g.name)}">` : initials(g.name);
-    const spousePill = g.spouse && g.spouse !== '-' && g.spouse !== '0' ? `<span class="pill pill-spouse">+${esc(g.spouse)}</span>` : '';
-    const arrPill = g.arr_flight ? `<span class="pill pill-arrival">✈ ${esc(g.arr_flight)}</span>` : '';
-    const depPill = g.dep_flight ? `<span class="pill pill-departure">🛫 ${esc(g.dep_flight)}</span>` : '';
-    const hotelPill = g.hotel ? `<span class="pill pill-hotel">🏨 ${esc(g.hotel)}</span>` : '';
+    const spousePill  = g.spouse && g.spouse !== '-' && g.spouse !== '0'
+      ? `<span class="pill pill-spouse">+${esc(g.spouse)}</span>` : '';
+    const arrPill     = g.arr_flight ? `<span class="pill pill-arrival">✈ ${esc(g.arr_flight)}</span>` : '';
+    const depPill     = g.dep_flight ? `<span class="pill pill-departure">🛫 ${esc(g.dep_flight)}</span>` : '';
+    const hotelPill   = g.hotel      ? `<span class="pill pill-hotel">🏨 ${esc(g.hotel)}</span>`       : '';
+
+    // Chaperone pills (arrival / departure)
+    const arrChapName = chapName(g.arr_chaperone_id);
+    const depChapName = chapName(g.dep_chaperone_id);
+    const chapPill = arrChapName
+      ? `<span class="pill" style="background:rgba(26,39,68,0.08);color:var(--navy);border:1px solid rgba(26,39,68,0.15);font-size:0.65rem;">🤝 ${esc(arrChapName)}</span>`
+      : '';
+
+    // Driver pills (arrival / departure — show both if different)
+    const arrDrvName = drvName(g.arr_driver_id);
+    const depDrvName = drvName(g.dep_driver_id);
+    const arrDrvPill = arrDrvName
+      ? `<span class="pill" style="background:rgba(26,39,68,0.06);color:var(--navy);border:1px solid rgba(26,39,68,0.12);font-size:0.65rem;">🚗 ↗ ${esc(arrDrvName)}${g.arr_plate?' · '+esc(g.arr_plate):''}</span>`
+      : '';
+    const depDrvPill = depDrvName && depDrvName !== arrDrvName
+      ? `<span class="pill" style="background:rgba(26,39,68,0.06);color:var(--navy);border:1px solid rgba(26,39,68,0.12);font-size:0.65rem;">🚗 ↘ ${esc(depDrvName)}${g.dep_plate?' · '+esc(g.dep_plate):''}</span>`
+      : (depDrvName && depDrvName === arrDrvName ? '' : '');
+
+    // Linked guest indicator
+    const linkedId   = g.linkedGuestId;
+    const linkedGuest = linkedId ? db.guests.find(x => x.id === linkedId) : null;
+    const linkedPill  = linkedGuest
+      ? `<span class="pill" style="background:rgba(200,149,42,0.12);color:var(--gold);border:1px solid rgba(200,149,42,0.3);font-size:0.65rem;" title="Sharing room with ${esc(linkedGuest.name)}">🔗 ${esc(linkedGuest.name.split(' ').pop())}</span>`
+      : '';
+
+    const dragAttrs = _reorderMode
+      ? `draggable="true"
+         ondragstart="onCardDragStart(event,${g.id})"
+         ondragover="onCardDragOver(event,${g.id})"
+         ondragleave="onCardDragLeave(event)"
+         ondrop="onCardDrop(event,${g.id})"
+         ondragend="onCardDragEnd(event)"`
+      : '';
+    const reorderHint = _reorderMode
+      ? `<div style="position:absolute;top:8px;right:8px;opacity:0.4;font-size:1rem;pointer-events:none;">⠿</div>`
+      : '';
+
     return `
-    <div class="guest-card" onclick="openGuestModal(${g.id})">
+    <div class="guest-card${linkedGuest ? ' linked-guest-card' : ''}"
+      id="gcard_${g.id}"
+      style="position:relative;${_reorderMode ? 'user-select:none;' : ''}"
+      ${dragAttrs}
+      ${!_reorderMode ? `onclick="openGuestModal(${g.id})"` : `onclick="openGuestModal(${g.id})"`}>
+      ${reorderHint}
       <div class="guest-card-header">
         <div class="guest-avatar">${av}</div>
         <div>
@@ -2472,7 +2595,8 @@ function renderGuestCards(guests) {
           ${g.title ? `<div class="guest-role">${esc(g.title.split('\n')[0].substring(0,80))}${g.title.length>80?'…':''}</div>` : ''}
         </div>
       </div>
-      <div class="guest-pills">${spousePill}${arrPill}${depPill}${hotelPill}</div>
+      <div class="guest-pills">${spousePill}${linkedPill}${arrPill}${depPill}${hotelPill}</div>
+      ${chapPill || arrDrvPill || depDrvPill ? `<div class="guest-pills" style="margin-top:4px;">${chapPill}${arrDrvPill}${depDrvPill}</div>` : ''}
       ${g.arr_date ? `<div class="guest-flight-info">
         <strong>ARR</strong> ${fmtDate(g.arr_date)} ${fmtTime(g.arr_time)} ${terminalBadge(g.arr_terminal, !!g.arr_flight)}
         ${g.dep_date ? `<br><strong>DEP</strong> ${fmtDate(g.dep_date)} ${fmtTime(g.dep_time)} ${terminalBadge(g.dep_terminal, !!g.dep_flight)}` : ''}
@@ -2481,9 +2605,64 @@ function renderGuestCards(guests) {
   }).join('');
 }
 
-// ═══════════════════════════════════════════
-//  GUEST MODAL
-// ═══════════════════════════════════════════
+// ── Guest card drag-and-drop reordering ──────────────────────────────────────
+function onCardDragStart(e, guestId) {
+  _dragSrcId = guestId;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', String(guestId));
+  // Slight delay so the dragging class shows after the drag ghost is created
+  setTimeout(() => {
+    const el = document.getElementById(`gcard_${guestId}`);
+    if (el) el.classList.add('dragging');
+  }, 0);
+}
+
+function onCardDragOver(e, guestId) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  if (guestId === _dragSrcId) return;
+  // Highlight drop target
+  document.querySelectorAll('.guest-card.drag-over').forEach(el => el.classList.remove('drag-over'));
+  const el = document.getElementById(`gcard_${guestId}`);
+  if (el) el.classList.add('drag-over');
+}
+
+function onCardDragLeave(e) {
+  const el = e.currentTarget;
+  if (el) el.classList.remove('drag-over');
+}
+
+function onCardDrop(e, targetId) {
+  e.preventDefault();
+  document.querySelectorAll('.guest-card.drag-over').forEach(el => el.classList.remove('drag-over'));
+  if (_dragSrcId === null || targetId === _dragSrcId) return;
+
+  // Ensure guestOrder is up to date with all guests
+  const allIds = db.guests.map(g => g.id);
+  // Fill any missing IDs
+  allIds.forEach(id => { if (!db.guestOrder.includes(id)) db.guestOrder.push(id); });
+  // Remove IDs of deleted guests
+  db.guestOrder = db.guestOrder.filter(id => allIds.includes(id));
+
+  const srcIdx    = db.guestOrder.indexOf(_dragSrcId);
+  const targetIdx = db.guestOrder.indexOf(targetId);
+  if (srcIdx === -1 || targetIdx === -1) return;
+
+  // Move srcId to targetIdx position
+  db.guestOrder.splice(srcIdx, 1);
+  const newTargetIdx = db.guestOrder.indexOf(targetId);
+  db.guestOrder.splice(newTargetIdx, 0, _dragSrcId);
+
+  saveDB();
+  filterGuests();
+}
+
+function onCardDragEnd(e) {
+  _dragSrcId = null;
+  document.querySelectorAll('.guest-card.dragging, .guest-card.drag-over').forEach(el => {
+    el.classList.remove('dragging', 'drag-over');
+  });
+}
 function openGuestModal(id) {
   const g = db.guests.find(x => x.id === id);
   if (!g) return;
@@ -2853,6 +3032,7 @@ function saveGuest(e) {
     checkout2: document.getElementById('f_checkout2').value,
     additionalGuests: getAdditionalGuestsFromForm(),
     additional: getAdditionalGuestsFromForm().map(a=>a.name).join(', '),
+    linkedGuestId: parseInt(document.getElementById('f_linkedGuestId')?.value) || null,
     session1: document.getElementById('f_session1').value.trim(),
     respond1: document.getElementById('f_respond1').value.trim(),
     session2: document.getElementById('f_session2').value.trim(),
@@ -2870,7 +3050,14 @@ function saveGuest(e) {
     activityAttendance: actAtt,
     activitySpouseAttendance: actSpAtt,
     activityAdditionalAttendance: actAddAtt,
-    photo: document.getElementById('photoPreview').src.startsWith('data:') ? document.getElementById('photoPreview').src : ''
+    photo: (() => {
+      const el = document.getElementById('photoPreview');
+      if (!el) return '';
+      const src = el.src || '';
+      // Accept both base64 (compressed thumbnails) and https URLs
+      if (src.startsWith('data:image') || src.startsWith('https://')) return src;
+      return '';
+    })(),
   };
 
   if (id) {
@@ -2879,6 +3066,9 @@ function saveGuest(e) {
   } else {
     guest.id = Date.now();
     db.guests.push(guest);
+    // Append new guest to end of custom order
+    if (!db.guestOrder) db.guestOrder = [];
+    db.guestOrder.push(guest.id);
   }
   saveDB();
   showToast(id ? '✓ Guest updated successfully' : '✓ Guest added successfully', 'success');
@@ -2919,7 +3109,11 @@ function editGuest(id) {
       if (hs)  hs.value  = g.hotel_id  || '';
       if (hs2) hs2.value = g.hotel2_id || '';
     }, 20);
-    // Restore additional guests list
+    populateLinkedGuestSelect(g.id);
+    setTimeout(() => {
+      const ls = document.getElementById('f_linkedGuestId');
+      if (ls) ls.value = g.linkedGuestId || '';
+    }, 20);
     _currentAdditionalGuests = (g.additionalGuests || []).map(a => ({...a}));
     renderAdditionalGuestsList(_currentAdditionalGuests);
     // Restore dietary info per person
@@ -2951,8 +3145,10 @@ function editGuest(id) {
       });
     }, 20);
     if (g.photo) {
-      document.getElementById('photoPreview').src = g.photo;
-      document.getElementById('photoPreview').style.display = 'block';
+      const prevEl = document.getElementById('photoPreview');
+      prevEl.src = g.photo;
+      prevEl.style.display = 'block';
+      prevEl.dataset.storageUrl = g.photo.startsWith('https://') ? g.photo : '';
       document.getElementById('photoPlaceholder').style.display = 'none';
     }
     renderFormCheckboxes();
@@ -2986,8 +3182,10 @@ function clearForm() {
   document.getElementById('editGuestId').value = '';
   document.getElementById('formTitle').textContent = 'Add New Guest';
   document.getElementById('formDesc').textContent = 'Fill in the guest profile details below. All fields can be updated later.';
-  document.getElementById('photoPreview').src = '';
-  document.getElementById('photoPreview').style.display = 'none';
+  const prevEl = document.getElementById('photoPreview');
+  prevEl.src = '';
+  prevEl.style.display = 'none';
+  prevEl.dataset.storageUrl = '';
   document.getElementById('photoPlaceholder').style.display = 'flex';
   toggleStay2(false);
   _currentAdditionalGuests = [];
@@ -2998,6 +3196,7 @@ function clearForm() {
 function deleteGuest(id) {
   if (!confirm('Remove this guest from the list? This cannot be undone.')) return;
   db.guests = db.guests.filter(g => g.id !== id);
+  if (db.guestOrder) db.guestOrder = db.guestOrder.filter(x => x !== id);
   saveDB();
   closeModal('guestModal');
   showToast('Guest removed', 'error');
@@ -3007,13 +3206,49 @@ function deleteGuest(id) {
 function handlePhotoUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    document.getElementById('photoPreview').src = ev.target.result;
-    document.getElementById('photoPreview').style.display = 'block';
-    document.getElementById('photoPlaceholder').style.display = 'none';
-  };
-  reader.readAsDataURL(file);
+
+  showToast('⏳ Processing photo…', '');
+
+  // Compress to thumbnail before storing — keeps Firestore document well under 1MB
+  compressImage(file, 180, 0.70).then(blob => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target.result;
+      document.getElementById('photoPreview').src = dataUrl;
+      document.getElementById('photoPreview').style.display = 'block';
+      document.getElementById('photoPreview').dataset.storageUrl = '';
+      document.getElementById('photoPlaceholder').style.display = 'none';
+      // Estimate size
+      const kb = Math.round(dataUrl.length * 0.75 / 1024);
+      showToast(`✓ Photo ready (${kb} KB)`, 'success');
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+function compressImage(file, maxPx, quality) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width > height) { height = Math.round(height * maxPx / width); width = maxPx; }
+        else                { width  = Math.round(width  * maxPx / height); height = maxPx; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
+async function uploadPhotoToStorage(file) {
+  // Not used — photos stored as compressed base64 in Firestore
 }
 
 // ═══════════════════════════════════════════
@@ -3673,16 +3908,24 @@ function renderHotel() {
   if (reg) {
     reg.innerHTML = db.hotels.length ? db.hotels.map((h,i) => {
 
-      // Count guests using this hotel as 1st OR 2nd stay
+      // Count guests using this hotel as 1st OR 2nd stay (deduplicated, linked pairs = 1 room)
       const stay1Guests = db.guests.filter(g =>
         g.hotel_id == h.id || (!g.hotel_id && g.hotel === h.name)
       );
       const stay2Guests = db.guests.filter(g =>
         g.hotel2_id == h.id || (!g.hotel2_id && g.hotel2 === h.name)
       );
-      // Deduplicate (guest could have same hotel for both stays)
       const allGuestIds = new Set([...stay1Guests.map(g=>g.id), ...stay2Guests.map(g=>g.id)]);
-      const guestCount = allGuestIds.size;
+      // For room count: linked pairs share a room → count as 1
+      const roomIds = new Set();
+      allGuestIds.forEach(gid => {
+        const g = db.guests.find(x => x.id === gid);
+        if (!g) return;
+        // If this guest's linked partner is already counted, skip (they share a room)
+        if (g.linkedGuestId && roomIds.has(g.linkedGuestId)) return;
+        roomIds.add(gid);
+      });
+      const guestCount = roomIds.size;
 
       // Count total pax (guest + spouse + additional guests)
       let totalPax = 0;
@@ -3739,32 +3982,51 @@ function renderHotel() {
     : '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--slate-light);">No hotels yet. Click "+ Add Hotel" to create one.</td></tr>';
   }
 
-  // Guest schedule
+  // Guest schedule — group linked pairs to avoid double-counting room nights
   const body = document.getElementById('hotelBody');
-  body.innerHTML = db.guests.filter(g => g.hotel||g.hotel_id||g.hotel2||g.checkin).map((g,i) => {
-    // Helper: calculate nights and flag if dates are wrong
+  const shownIds = new Set(); // track guests already shown via a link
+  let rowNum = 0;
+  const hotelRows = [];
+
+  db.guests.filter(g => g.hotel || g.hotel_id || g.hotel2 || g.checkin).forEach(g => {
+    if (shownIds.has(g.id)) return; // already shown as part of a pair
+
+    const linkedGuest = g.linkedGuestId ? db.guests.find(x => x.id === g.linkedGuestId) : null;
+    if (linkedGuest) shownIds.add(linkedGuest.id); // prevent linked guest from rendering separately
+
     function calcNights(cin, cout) {
       if (!cin || !cout) return { val: '—', warn: false };
       const n = Math.round((new Date(cout) - new Date(cin)) / 86400000);
-      if (n < 0) return { val: `<span style="color:var(--red);font-weight:700;" title="Check-out is BEFORE check-in — please correct">⚠ ${Math.abs(n)}d?</span>`, warn: true };
-      if (n === 0) return { val: `<span style="color:var(--gold);font-weight:700;" title="Same day check-in and check-out">0</span>`, warn: false };
+      if (n < 0) return { val: `<span style="color:var(--red);font-weight:700;" title="Check-out before check-in">⚠ ${Math.abs(n)}d?</span>`, warn: true };
+      if (n === 0) return { val: `<span style="color:var(--gold);">0</span>`, warn: false };
       return { val: `<strong>${n}</strong>`, warn: false };
     }
+
     const n1 = calcNights(g.checkin, g.checkout);
     const n2 = calcNights(g.checkin2, g.checkout2);
-    const hotelDisplay  = g.hotel_id  ? (db.hotels.find(h=>h.id==g.hotel_id)?.name  || g.hotel  || '—') : (g.hotel ||'—');
-    const hotel2Display = g.hotel2_id ? (db.hotels.find(h=>h.id==g.hotel2_id)?.name || g.hotel2 || '')  : (g.hotel2||'');
+    const hotelDisplay  = g.hotel_id  ? (db.hotels.find(h=>h.id==g.hotel_id)?.name  || g.hotel  || '—') : (g.hotel  || '—');
+    const hotel2Display = g.hotel2_id ? (db.hotels.find(h=>h.id==g.hotel2_id)?.name || g.hotel2 || '') : (g.hotel2 || '');
     const addlNames = (g.additionalGuests||[]).map(a=>esc(a.name)).join(', ') || '—';
     const has2nd = hotel2Display || g.checkin2;
-    const rowSpan = has2nd ? 2 : 1;
+    rowNum++;
 
+    // Name cell — show linked guest below if applicable
+    const nameCell = linkedGuest
+      ? `${esc(g.name)}<br><span style="font-size:0.74rem;color:var(--gold);font-weight:600;">🔗 ${esc(linkedGuest.name)}</span>`
+      : esc(g.name);
+
+    const roomNoteCell = linkedGuest
+      ? `<span style="font-size:0.68rem;background:rgba(200,149,42,0.12);color:var(--gold);border:1px solid rgba(200,149,42,0.3);border-radius:4px;padding:2px 6px;">Shared room</span>`
+      : '';
+
+    const rowSpan = has2nd ? 2 : 1;
     let html = `<tr>
-      <td rowspan="${rowSpan}" style="font-weight:700;text-align:center;">${i+1}</td>
-      <td rowspan="${rowSpan}" class="td-name">${esc(g.name)}</td>
+      <td rowspan="${rowSpan}" style="font-weight:700;text-align:center;">${rowNum}</td>
+      <td rowspan="${rowSpan}" class="td-name">${nameCell}</td>
       <td rowspan="${rowSpan}" style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
       <td rowspan="${rowSpan}" style="font-size:0.75rem;">${addlNames}</td>
       <td><span class="pill pill-hotel" style="font-size:0.68rem;">1st</span> ${esc(hotelDisplay)}</td>
-      <td>${esc(g.room)||'—'}</td>
+      <td>${esc(g.room)||'—'} ${roomNoteCell}</td>
       <td>${fmtDate(g.arr_date)}<br><span style="font-size:0.72rem;color:var(--slate-light);">${fmtTime(g.arr_time)}</span></td>
       <td>${fmtDate(g.checkin)||'—'}</td>
       <td>${fmtDate(g.dep_date)}<br><span style="font-size:0.72rem;color:var(--slate-light);">${fmtTime(g.dep_time)}</span></td>
@@ -3784,8 +4046,10 @@ function renderHotel() {
         <td style="background:#f0f4ff;">${n2.val}</td>
       </tr>`;
     }
-    return html;
-  }).join('') || '<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--slate-light);">No hotel data yet.</td></tr>';
+    hotelRows.push(html);
+  });
+
+  body.innerHTML = hotelRows.join('') || '<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--slate-light);">No hotel data yet.</td></tr>';
 }
 
 function openHotelModal() {
@@ -3919,6 +4183,18 @@ function getAdditionalGuestsFromForm() {
 // ═══════════════════════════════════════════
 //  CHAPERONE / DRIVER HELPERS
 // ═══════════════════════════════════════════
+function populateLinkedGuestSelect(currentGuestId) {
+  const sel = document.getElementById('f_linkedGuestId');
+  if (!sel) return;
+  const cur = parseInt(sel.value) || '';
+  sel.innerHTML = '<option value="">— None —</option>' +
+    db.guests
+      .filter(g => !currentGuestId || g.id !== currentGuestId)
+      .map(g => `<option value="${g.id}">${esc(g.name)}${g.spouse && g.spouse !== '-' && g.spouse !== '0' ? ' (+ '+esc(g.spouse)+')' : ''}</option>`)
+      .join('');
+  if (cur) sel.value = cur;
+}
+
 function chapName(id) {
   if (!id && id !== 0) return '—';
   const c = db.chaperones.find(x => x.id === id || x.id === parseInt(id));
