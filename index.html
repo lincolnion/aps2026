@@ -3757,8 +3757,8 @@ function renderArrivals() {
       ${liveStatusBadge(g.arr_flight, 'arr', g.arr_date)}
       <td class="td-name">${esc(g.name)}</td>
       <td style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
-      <td style="font-size:0.78rem;">${esc(chapName(g.arr_chaperone_id))||'—'}</td>
-      <td style="font-size:0.78rem;">${esc(drvName(g.arr_driver_id))||'—'}</td>
+      <td style="font-size:0.78rem;">${g.arr_chaperone_id ? esc(chapName(g.arr_chaperone_id)) : '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;white-space:nowrap;">🤝 ?</span>'}</td>
+      <td style="font-size:0.78rem;">${g.arr_driver_id   ? esc(drvName(g.arr_driver_id))   : '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;white-space:nowrap;">🚗 ?</span>'}</td>
       <td style="font-size:0.75rem;color:var(--slate-light);">${esc(g.arr_remarks)||'—'}</td>
     </tr>`).join('');
 }
@@ -3785,8 +3785,8 @@ function renderDepartures() {
       ${liveStatusBadge(g.dep_flight, 'dep', g.dep_date)}
       <td class="td-name">${esc(g.name)}</td>
       <td style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
-      <td style="font-size:0.78rem;">${esc(chapName(g.dep_chaperone_id))||'—'}</td>
-      <td style="font-size:0.78rem;">${esc(drvName(g.dep_driver_id))||'—'}</td>
+      <td style="font-size:0.78rem;">${g.dep_chaperone_id ? esc(chapName(g.dep_chaperone_id)) : '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;white-space:nowrap;">🤝 ?</span>'}</td>
+      <td style="font-size:0.78rem;">${g.dep_driver_id   ? esc(drvName(g.dep_driver_id))   : '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;white-space:nowrap;">🚗 ?</span>'}</td>
       <td style="font-size:0.75rem;color:var(--slate-light);">${esc(g.dep_remarks)||'—'}</td>
     </tr>`).join('');
 }
@@ -4950,8 +4950,8 @@ function renderDrivers() {
       <td style="text-align:center;color:var(--slate-light);font-size:1rem;padding:0 6px;">${reorder ? '⠿' : ''}</td>
       <td>${i+1}</td>
       <td class="td-name">${esc(d.name)}</td>
-      <td style="font-size:0.78rem;">${esc(d.contact)||'—'}</td>
-      <td><code style="font-size:0.78rem;">${esc(d.plate)||'—'}</code></td>
+      <td style="font-size:0.78rem;white-space:nowrap;min-width:110px;">${esc(d.contact)||'—'}</td>
+      <td style="font-size:0.78rem;white-space:nowrap;font-family:inherit;letter-spacing:0.02em;">${esc(d.plate)||'—'}</td>
       <td style="font-size:0.78rem;">${esc(d.car)||'—'}</td>
       <td style="font-size:0.78rem;">${esc(d.color)||'—'}</td>
       <td style="font-size:0.75rem;color:var(--slate-light);">${esc(d.remark)||'—'}</td>
@@ -6215,7 +6215,7 @@ function openSeatPicker(seatId) { openSeatPickerSVG(seatId); }
 // ═══════════════════════════════════════════
 
 // ── Set your team password here ──────────────
-const APP_PASSWORD = 'PYLJJ';
+const APP_PASSWORD = 'APS2026';
 // ─────────────────────────────────────────────
 
 const SESSION_KEY = 'aps2026_auth';
