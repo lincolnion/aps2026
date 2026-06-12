@@ -540,7 +540,10 @@
     opacity: 0.4;
     transform: scale(0.97);
   }
-  tr.row-drag-over td { background: rgba(200,149,42,0.12) !important; }
+  tr.row-highlight td {
+    background: rgba(200,149,42,0.18) !important;
+    transition: background 0.3s;
+  }
   .reorder-mode-badge {
     display:inline-flex;align-items:center;gap:6px;
     background:var(--gold);color:white;
@@ -1010,16 +1013,16 @@
             <input type="text" id="f_session1" placeholder="e.g. Session 1 - D1">
           </div>
           <div class="form-group">
-            <label>Respondent (1st)</label>
-            <input type="text" id="f_respond1" placeholder="Respondent name">
+            <label>Responding (1st)</label>
+            <input type="text" id="f_respond1" placeholder="Responding person's name">
           </div>
           <div class="form-group">
             <label>Session (2nd)</label>
             <input type="text" id="f_session2" placeholder="e.g. Session 4 - D1">
           </div>
           <div class="form-group">
-            <label>Respondent (2nd)</label>
-            <input type="text" id="f_respond2" placeholder="Respondent name">
+            <label>Responding (2nd)</label>
+            <input type="text" id="f_respond2" placeholder="Responding person's name">
           </div>
         </div>
       </div>
@@ -1265,7 +1268,7 @@
     </div>
     <div class="table-wrapper">
       <table>
-        <thead><tr><th>Date</th><th>Day</th><th>Start Time</th><th>Day Ref</th><th>Type</th><th>Description / Subject</th><th>Presenter</th><th>Respondent</th><th>Location</th><th>Chaperone</th><th></th></tr></thead>
+        <thead><tr><th>Date</th><th>Day</th><th>Start Time</th><th>Day Ref</th><th>Type</th><th>Description / Subject</th><th>Presenter</th><th>Responding</th><th>Location</th><th>Chaperone</th><th></th></tr></thead>
         <tbody id="eventsBody"></tbody>
       </table>
     </div>
@@ -1577,7 +1580,7 @@
           </select>
         </div>
         <div class="form-group"><label>Presenter / Speaker</label><input type="text" id="ef_presenter" placeholder="e.g. Frank Macchia"></div>
-        <div class="form-group"><label>Respondent</label><input type="text" id="ef_respondent" placeholder="e.g. Byron Klaus"></div>
+        <div class="form-group"><label>Responding</label><input type="text" id="ef_respondent" placeholder="e.g. Byron Klaus"></div>
         <div class="form-group full-width"><label>Description / Subject</label><textarea id="ef_desc" rows="2" placeholder="Full session title or event description"></textarea></div>
         <div class="form-group full-width"><label>Location / Venue</label><input type="text" id="ef_location" placeholder="e.g. Summit Suite, Hilton Orchard"></div>
         <div class="form-group"><label>Chaperone</label><input type="text" id="ef_chaperone" placeholder="Chaperone name"></div>
@@ -1625,6 +1628,26 @@
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveHotel()">Save Hotel</button>
         <button class="btn btn-outline" onclick="closeModal('hotelModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────── CONFIRM DELETE MODAL ──────────────── -->
+<div class="modal-overlay" id="confirmDeleteModal" style="z-index:10000;">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header" style="border-bottom-color:rgba(197,48,48,0.2);">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:1.4rem;">⚠️</span>
+        <div class="modal-title" id="confirmDeleteTitle" style="color:var(--red);">Confirm Delete</div>
+      </div>
+      <button class="modal-close" onclick="confirmDeleteCancel()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="confirmDeleteMsg" style="font-size:0.9rem;color:var(--navy);line-height:1.6;margin-bottom:20px;"></p>
+      <div class="btn-row" style="justify-content:flex-end;">
+        <button class="btn btn-outline" onclick="confirmDeleteCancel()">Cancel</button>
+        <button class="btn btn-danger" id="confirmDeleteOkBtn" style="background:var(--red);color:white;border-color:var(--red);" onclick="confirmDeleteOk()">🗑 Delete</button>
       </div>
     </div>
   </div>
@@ -2769,14 +2792,22 @@ function renderGuestCards(guests) {
     const arrChapName = chapName(g.arr_chaperone_id);
     const arrDrvName  = drvName(g.arr_driver_id);
     const depDrvName  = drvName(g.dep_driver_id);
+
+    const pillLink = 'cursor:pointer;transition:all 0.15s;';
     const chapPill = arrChapName
-      ? `<span class="pill" style="background:rgba(26,39,68,0.08);color:var(--navy);border:1px solid rgba(26,39,68,0.15);font-size:0.65rem;">🤝 ${esc(arrChapName)}</span>`
+      ? `<span class="pill" onclick="event.stopPropagation();navToRow('chaperones',${g.arr_chaperone_id})"
+          style="background:rgba(26,39,68,0.08);color:var(--navy);border:1px solid rgba(26,39,68,0.15);font-size:0.65rem;${pillLink}"
+          title="Go to Chaperones — ${esc(arrChapName)}">🤝 ${esc(arrChapName)}</span>`
       : '';
     const arrDrvPill = arrDrvName
-      ? `<span class="pill" style="background:rgba(26,39,68,0.06);color:var(--navy);border:1px solid rgba(26,39,68,0.12);font-size:0.65rem;">🚗 ARR ${esc(arrDrvName)}${g.arr_plate?' · '+esc(g.arr_plate):''}</span>`
+      ? `<span class="pill" onclick="event.stopPropagation();navToRow('drivers',${g.arr_driver_id})"
+          style="background:rgba(26,39,68,0.06);color:var(--navy);border:1px solid rgba(26,39,68,0.12);font-size:0.65rem;${pillLink}"
+          title="Go to Drivers — ${esc(arrDrvName)}">🚗 ARR ${esc(arrDrvName)}${g.arr_plate?' · '+esc(g.arr_plate):''}</span>`
       : '';
     const depDrvPill = depDrvName && depDrvName !== arrDrvName
-      ? `<span class="pill" style="background:rgba(26,39,68,0.06);color:var(--navy);border:1px solid rgba(26,39,68,0.12);font-size:0.65rem;">🚗 DEP ${esc(depDrvName)}${g.dep_plate?' · '+esc(g.dep_plate):''}</span>`
+      ? `<span class="pill" onclick="event.stopPropagation();navToRow('drivers',${g.dep_driver_id})"
+          style="background:rgba(26,39,68,0.06);color:var(--navy);border:1px solid rgba(26,39,68,0.12);font-size:0.65rem;${pillLink}"
+          title="Go to Drivers — ${esc(depDrvName)}">🚗 DEP ${esc(depDrvName)}${g.dep_plate?' · '+esc(g.dep_plate):''}</span>`
       : '';
 
     // Single-line ARR / DEP — flight · date · time · terminal
@@ -2834,11 +2865,110 @@ function renderGuestCards(guests) {
       <div class="guest-pills">${spousePill}${linkedPill}${hotelPill}</div>
       ${chapPill || arrDrvPill || depDrvPill ? `<div class="guest-pills" style="margin-top:4px;">${chapPill}${arrDrvPill}${depDrvPill}</div>` : ''}
       ${arrLine}${depLine}
+      ${(() => {
+        const gName = g.name || '';
+        // Build match tokens: full name, last name alone (only if 5+ chars), first name alone (only if 5+ chars)
+        // This prevents "Archer" matching both Kenneth Archer AND Melissa Archer
+        const parts = gName.toLowerCase().split(/\s+/).filter(p => p.length > 2);
+        // For each event field, check if it contains the guest's name precisely
+        const matchName = (field) => {
+          if (!field) return false;
+          const f = field.toLowerCase();
+          // 1. Full name match (most precise) — e.g. "melissa archer"
+          if (f.includes(gName.toLowerCase())) return true;
+          // 2. First + Last name combo — skip honorifics (Prof, Dr, etc.)
+          const honorifics = new Set(['prof','dr','mr','mrs','ms','rev','ps','pastor','bishop','sir','dr.','prof.']);
+          const meaningful = parts.filter(p => !honorifics.has(p));
+          if (meaningful.length >= 2) {
+            // Check if BOTH first meaningful word AND last word appear together
+            const first = meaningful[0];
+            const last  = meaningful[meaningful.length - 1];
+            if (f.includes(first) && f.includes(last)) return true;
+          } else if (meaningful.length === 1 && meaningful[0].length >= 5) {
+            // Single distinctive name (long enough to be unique)
+            if (f.includes(meaningful[0])) return true;
+          }
+          return false;
+        };
+
+        // Scan events for programme involvement — deduplicated by desc
+        const seenDescs = new Set();
+        const evRows = [];
+        (db.events || []).forEach(ev => {
+          if (!ev.desc || ev.type === 'Break') return;
+          const isPresenter  = matchName(ev.presenter);
+          const isResponding = matchName(ev.respondent);
+          if (!isPresenter && !isResponding) return;
+          // Deduplicate by normalised desc
+          const key = ev.desc.toLowerCase().replace(/\s+/g, ' ').trim();
+          if (seenDescs.has(key)) return;
+          seenDescs.add(key);
+          evRows.push({
+            role: isPresenter ? (ev.type === 'Devotion' ? 'DEVOTION' : ev.type === 'Service' ? 'SERVICE' : 'PRESENTER') : 'RESPONDING',
+            desc: ev.desc, dayref: ev.dayref||'', start: ev.start||'', type: ev.type
+          });
+        });
+
+        // Only add manual session fields if NOT already covered by events scan
+        const manualRows = [];
+        [{ desc: g.session1, respond: g.respond1 }, { desc: g.session2, respond: g.respond2 }]
+          .filter(m => m.desc && m.desc.trim())
+          .forEach(m => {
+            const mKey = m.desc.toLowerCase().replace(/\s+/g, ' ').trim();
+            // Skip if any event row already covers this (partial match)
+            const covered = evRows.some(r => r.desc.toLowerCase().includes(mKey) || mKey.includes(r.desc.toLowerCase().substring(0, 15)));
+            if (!covered) manualRows.push({ role:'PRESENTER', desc: m.desc, respond: m.respond||'', dayref:'', start:'', type:'' });
+          });
+
+        const allRows = [...evRows, ...manualRows];
+        if (!allRows.length) return '';
+
+        const roleStyles = {
+          'PRESENTER':  { bg:'rgba(26,39,68,0.1)',     color:'var(--navy)' },
+          'RESPONDING': { bg:'rgba(59,91,219,0.1)',     color:'var(--blue)' },
+          'DEVOTION':   { bg:'rgba(45,122,79,0.1)',     color:'var(--green)' },
+          'SERVICE':    { bg:'rgba(107,33,168,0.1)',    color:'#6b21a8' },
+        };
+
+        return `<div style="margin-top:7px;padding-top:7px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:3px;">
+          ${allRows.map(r => {
+            const st = roleStyles[r.role] || roleStyles['PRESENTER'];
+            const dayBit  = r.dayref ? `<span style="font-size:0.6rem;font-weight:700;background:var(--navy);color:white;padding:0 4px;border-radius:3px;margin-right:4px;">${r.dayref}</span>` : '';
+            const timeBit = r.start  ? `<span style="font-size:0.65rem;color:var(--slate-light);margin-right:3px;">${fmtTime(r.start)}</span>` : '';
+            const shortDesc = r.desc.length > 52 ? r.desc.substring(0, 50) + '…' : r.desc;
+            return `<div style="display:flex;align-items:flex-start;gap:5px;font-size:0.72rem;">
+              <span style="flex-shrink:0;background:${st.bg};color:${st.color};font-size:0.58rem;font-weight:700;padding:1px 5px;border-radius:3px;margin-top:1px;letter-spacing:0.04em;">${r.role}</span>
+              <span style="color:var(--navy);line-height:1.4;">${dayBit}${timeBit}${esc(shortDesc)}</span>
+            </div>`;
+          }).join('')}
+        </div>`;
+      })()}
     </div>`;
   }).join('');
 }
 
-// ── Guest card drag-and-drop reordering ──────────────────────────────────────
+// Navigate to a register tab and highlight a specific row by ID
+function navToRow(tab, id) {
+  showView(tab);
+  // Wait for render then scroll to and highlight the row
+  setTimeout(() => {
+    const rowId = `${tab === 'chaperones' ? 'chaperonerow' : 'driverrow'}_${id}`;
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    // Scroll into view
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Highlight with gold flash
+    row.classList.add('row-highlight');
+    setTimeout(() => {
+      // Fade out highlight
+      row.querySelectorAll('td').forEach(td => {
+        td.style.transition = 'background 1.2s ease';
+        td.style.background = '';
+      });
+      row.classList.remove('row-highlight');
+    }, 2000);
+  }, 120);
+}
 function onCardDragStart(e, guestId) {
   _dragSrcId = guestId;
   e.dataTransfer.effectAllowed = 'move';
@@ -2956,9 +3086,9 @@ function openGuestModal(id) {
       <div class="modal-section-title">🎤 Sessions</div>
       <div class="info-grid">
         ${g.session1 ? `<div class="info-item"><label>Session 1</label><span>${esc(g.session1)}</span></div>` : ''}
-        ${g.respond1 ? `<div class="info-item"><label>Respondent 1</label><span>${esc(g.respond1)}</span></div>` : ''}
+        ${g.respond1 ? `<div class="info-item"><label>Responding</label><span>${esc(g.respond1)}</span></div>` : ''}
         ${g.session2 ? `<div class="info-item"><label>Session 2</label><span>${esc(g.session2)}</span></div>` : ''}
-        ${g.respond2 ? `<div class="info-item"><label>Respondent 2</label><span>${esc(g.respond2)}</span></div>` : ''}
+        ${g.respond2 ? `<div class="info-item"><label>Responding</label><span>${esc(g.respond2)}</span></div>` : ''}
       </div>
     </div>` : ''}
     ${(() => {
@@ -3482,8 +3612,8 @@ function clearForm() {
   renderAdditionalGuestsList([]);
 }
 
-function deleteGuest(id) {
-  if (!confirm('Remove this guest from the list? This cannot be undone.')) return;
+async function deleteGuest(id) {
+  if (!await confirmDelete('Remove Guest', `Remove <strong>${db.guests.find(g=>g.id===id)?.name||'this guest'}</strong> from the list? This cannot be undone.`)) return;
   db.guests = db.guests.filter(g => g.id !== id);
   if (db.guestOrder) db.guestOrder = db.guestOrder.filter(x => x !== id);
   saveDB();
@@ -4064,8 +4194,8 @@ function saveMealEvent() {
   saveDB(); closeModal('mealModal'); renderMeals();
   showToast('✓ Meal event saved', 'success');
 }
-function deleteMealEvent(i) {
-  if (!confirm('Remove this meal event?')) return;
+async function deleteMealEvent(i) {
+  if (!await confirmDelete('Remove Meal Event', 'Remove this meal event? This cannot be undone.')) return;
   db.mealEvents.splice(i,1);
   db.guests.forEach(g => {
     if (g.mealAttendance)       g.mealAttendance.splice(i,1);
@@ -4250,8 +4380,8 @@ function saveActivityOption() {
   saveDB(); closeModal('activityModal'); renderActivities();
   showToast('✓ Activity saved', 'success');
 }
-function deleteActivityOption(i) {
-  if (!confirm('Remove this activity option?')) return;
+async function deleteActivityOption(i) {
+  if (!await confirmDelete('Remove Activity', 'Remove this activity option? This cannot be undone.')) return;
   db.activityOptions.splice(i,1);
   db.guests.forEach(g => {
     if (g.activityAttendance)       g.activityAttendance.splice(i,1);
@@ -4384,8 +4514,8 @@ function saveEventRow() {
   saveDB(); syncDerivedArrays(); closeModal('eventModal'); renderEvents();
   showToast('✓ Event saved', 'success');
 }
-function deleteEventRow(i) {
-  if (!confirm('Remove this event?')) return;
+async function deleteEventRow(i) {
+  if (!await confirmDelete('Remove Event', 'Remove this event from the programme? This cannot be undone.')) return;
   db.events.splice(i,1); saveDB(); renderEvents();
 }
 
@@ -4597,8 +4727,8 @@ function saveHotel() {
   if (document.getElementById('view-hotel').classList.contains('active')) renderHotel();
   showToast('✓ Hotel saved', 'success');
 }
-function deleteHotel(id) {
-  if (!confirm('Remove this hotel? Guest assignments using this hotel will show the name only.')) return;
+async function deleteHotel(id) {
+  if (!await confirmDelete('Remove Hotel', 'Remove this hotel? Guests assigned to it will retain the name but lose the link.')) return;
   db.hotels = db.hotels.filter(x => x.id !== id);
   saveDB(); renderHotel();
 }
@@ -4905,8 +5035,8 @@ function saveChaperone() {
   saveDB(); closeModal('chaperoneModal'); renderChaperones();
   showToast('✓ Chaperone saved', 'success');
 }
-function deleteChaperone(id) {
-  if (!confirm('Remove this chaperone?')) return;
+async function deleteChaperone(id) {
+  if (!await confirmDelete('Remove Chaperone', `Remove <strong>${db.chaperones.find(c=>c.id===id)?.name||'this chaperone'}</strong>? Guest assignments will be cleared.`)) return;
   db.chaperones = db.chaperones.filter(x => x.id !== id);
   if (db.chaperoneOrder) db.chaperoneOrder = db.chaperoneOrder.filter(x => x !== id);
   db.guests.forEach(g => {
@@ -5010,8 +5140,8 @@ function saveDriver() {
   saveDB(); closeModal('driverModal'); renderDrivers();
   showToast('✓ Driver saved', 'success');
 }
-function deleteDriver(id) {
-  if (!confirm('Remove this driver?')) return;
+async function deleteDriver(id) {
+  if (!await confirmDelete('Remove Driver', `Remove <strong>${db.drivers.find(d=>d.id===id)?.name||'this driver'}</strong>? Guest assignments will be cleared.`)) return;
   db.drivers = db.drivers.filter(x => x.id !== id);
   if (db.driverOrder) db.driverOrder = db.driverOrder.filter(x => x !== id);
   db.guests.forEach(g => {
@@ -5678,8 +5808,8 @@ function saveSeatingPlan() {
   showToast('✓ Seating plan saved', 'success');
 }
 
-function clearSeatingPlan() {
-  if (!confirm('Clear all tables and assignments for this meal?')) return;
+async function clearSeatingPlan() {
+  if (!await confirmDelete('Clear Seating Plan', 'Clear all tables and seat assignments for this meal? This cannot be undone.')) return;
   _seating.tables      = [];
   _seating.assignments = {};
   _seating.tableCounter = 0;
@@ -5944,13 +6074,13 @@ function startTableDrag(e, tableId) {
   document.addEventListener('mouseup', onUp);
 }
 
-function handleChairClick(seatId, tableId) {
+async function handleChairClick(seatId, tableId) {
   if (_isDragging) return; // ignore clicks that were part of a drag
   _seating.selectedTableId = tableId;
   const existing = _seating.assignments[seatId];
   if (existing) {
     // Clicking occupied chair — unassign
-    if (confirm(`Remove ${personLabel(existing)} from this seat?`)) {
+    if (await confirmDelete('Remove from Seat', `Remove <strong>${personLabel(existing)}</strong> from this seat?`)) {
       delete _seating.assignments[seatId];
       renderSeatingCanvas();
       renderGuestPanel();
@@ -6211,11 +6341,33 @@ function openSeatPicker(seatId) { openSeatPickerSVG(seatId); }
 
 
 // ═══════════════════════════════════════════
-//  PASSWORD / ACCESS CONTROL
+//  CONFIRM DELETE — two-step protection
 // ═══════════════════════════════════════════
+let _confirmDeleteResolve = null;
+
+function confirmDelete(title, msg) {
+  return new Promise(resolve => {
+    _confirmDeleteResolve = resolve;
+    document.getElementById('confirmDeleteTitle').textContent = title;
+    document.getElementById('confirmDeleteMsg').innerHTML = msg;
+    document.getElementById('confirmDeleteModal').classList.add('open');
+    // Focus the Cancel button by default — user must deliberately click Delete
+    setTimeout(() => document.querySelector('#confirmDeleteModal .btn-outline')?.focus(), 50);
+  });
+}
+
+function confirmDeleteOk() {
+  document.getElementById('confirmDeleteModal').classList.remove('open');
+  if (_confirmDeleteResolve) { _confirmDeleteResolve(true); _confirmDeleteResolve = null; }
+}
+
+function confirmDeleteCancel() {
+  document.getElementById('confirmDeleteModal').classList.remove('open');
+  if (_confirmDeleteResolve) { _confirmDeleteResolve(false); _confirmDeleteResolve = null; }
+}
 
 // ── Set your team password here ──────────────
-const APP_PASSWORD = 'PYLJJ';
+const APP_PASSWORD = 'APS2026';
 // ─────────────────────────────────────────────
 
 const SESSION_KEY = 'aps2026_auth';
