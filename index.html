@@ -674,6 +674,7 @@
   <div class="nav-tab" data-view="add-guest">➕ Add / Edit Guest</div>
   <div class="nav-tab" data-view="arrivals">✈️ Arrivals</div>
   <div class="nav-tab" data-view="departures">🛫 Departures</div>
+  <div class="nav-tab" data-view="act-schedule">🎯 Activities</div>
   <div class="nav-tab" data-view="meals">🍽️ Meals</div>
   <div class="nav-tab" data-view="activities">🎯 Activities</div>
   <div class="nav-tab" data-view="events">📅 Events</div>
@@ -1027,24 +1028,14 @@
                   <option value="">— Select Chaperone —</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label>Driver</label>
-                <select id="f_arr_driver_id" onchange="syncDriverFields('arr')">
-                  <option value="">— Select Driver —</option>
-                </select>
+            </div>
+            <!-- Arrival drivers list -->
+            <div style="margin-top:10px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <label style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--slate);">Drivers</label>
+                <button type="button" class="btn btn-outline btn-sm" onclick="addLegDriver('arr')">+ Add Driver</button>
               </div>
-              <div class="form-group">
-                <label>Car Plate</label>
-                <input type="text" id="f_arr_plate" placeholder="Auto-filled or override">
-              </div>
-              <div class="form-group">
-                <label>Car Brand / Model</label>
-                <input type="text" id="f_arr_car" placeholder="Auto-filled or override">
-              </div>
-              <div class="form-group">
-                <label>Car Colour</label>
-                <input type="text" id="f_arr_color" placeholder="Auto-filled or override">
-              </div>
+              <div id="arr_drivers_list"></div>
             </div>
           </div>
           <!-- Departure -->
@@ -1057,26 +1048,52 @@
                   <option value="">— Select Chaperone —</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label>Driver</label>
-                <select id="f_dep_driver_id" onchange="syncDriverFields('dep')">
-                  <option value="">— Select Driver —</option>
-                </select>
+            </div>
+            <!-- Departure drivers list -->
+            <div style="margin-top:10px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <label style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--slate);">Drivers</label>
+                <button type="button" class="btn btn-outline btn-sm" onclick="addLegDriver('dep')">+ Add Driver</button>
               </div>
-              <div class="form-group">
-                <label>Car Plate</label>
-                <input type="text" id="f_dep_plate" placeholder="Auto-filled or override">
-              </div>
-              <div class="form-group">
-                <label>Car Brand / Model</label>
-                <input type="text" id="f_dep_car" placeholder="Auto-filled or override">
-              </div>
-              <div class="form-group">
-                <label>Car Colour</label>
-                <input type="text" id="f_dep_color" placeholder="Auto-filled or override">
-              </div>
+              <div id="dep_drivers_list"></div>
             </div>
           </div>
+        </div>
+
+        <!-- Activity Transport -->
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#7c3aed;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--border);">🎯 Activity Transport</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Chaperone</label>
+                <select id="f_act_chaperone_id" onchange="syncChaperoneName('act')">
+                  <option value="">— Select Chaperone —</option>
+                </select>
+              </div>
+            </div>
+            <!-- Activity drivers list -->
+            <div style="margin-top:4px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <label style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--slate);">Drivers</label>
+                <button type="button" class="btn btn-outline btn-sm" onclick="addLegDriver('act')">+ Add Driver</button>
+              </div>
+              <div id="act_drivers_list"></div>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:10px;">
+            <label>Activity Remarks</label>
+            <input type="text" id="f_act_remarks" placeholder="e.g. Pick up from hotel at 8 AM">
+          </div>
+        </div>
+
+        <!-- Additional Cars -->
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gold);">🚗 Additional Cars <span style="font-weight:400;font-size:0.65rem;color:var(--slate-light);">— for large groups needing extra vehicles</span></div>
+            <button type="button" class="btn btn-outline btn-sm" onclick="addExtraCar()">+ Add Car</button>
+          </div>
+          <div id="extraCarsList" style="display:flex;flex-direction:column;gap:8px;"></div>
         </div>
       </div>
 
@@ -1242,6 +1259,37 @@
           </tr>
         </thead>
         <tbody id="departuresBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ──────────────── ACTIVITY SCHEDULE ──────────────── -->
+  <div class="view" id="view-act-schedule">
+    <div class="section-title">Activity Schedule</div>
+    <div class="section-desc">Guests signed up for activities — with assigned chaperone and driver.</div>
+    <div class="toolbar" style="margin-bottom:14px;">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="actSchedSearch" placeholder="Search guest or activity…" oninput="renderActSchedule()">
+      </div>
+      <select id="actSchedFilter" onchange="renderActSchedule()" style="max-width:220px;">
+        <option value="">All Activities</option>
+      </select>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Activity</th><th>Date</th><th>Day</th><th>Time</th><th>Location</th>
+            <th>Guest</th><th>Spouse / Addl</th>
+            <th>Chaperone</th>
+            <th style="color:var(--gold);">Driver</th>
+            <th>Car Plate</th><th>Car</th>
+            <th>Extra Cars</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody id="actSchedBody"></tbody>
       </table>
     </div>
   </div>
@@ -1992,9 +2040,19 @@ function migrateDB() {
         : [];
     }
     if (!g.arr_chaperone_id) g.arr_chaperone_id = '';
-    if (!g.arr_driver_id)    g.arr_driver_id    = '';
     if (!g.dep_chaperone_id) g.dep_chaperone_id = '';
-    if (!g.dep_driver_id)    g.dep_driver_id    = '';
+    if (!g.act_chaperone_id) g.act_chaperone_id = '';
+    // Migrate single driver_id → drivers arrays
+    if (!g.arr_drivers) {
+      g.arr_drivers = g.arr_driver_id ? [{ driver_id: g.arr_driver_id, plate: g.arr_plate||'', car: g.arr_car||'', color: g.arr_color||'' }] : [];
+    }
+    if (!g.dep_drivers) {
+      g.dep_drivers = g.dep_driver_id ? [{ driver_id: g.dep_driver_id, plate: g.dep_plate||'', car: g.dep_car||'', color: g.dep_color||'' }] : [];
+    }
+    if (!g.act_drivers) {
+      g.act_drivers = g.act_driver_id ? [{ driver_id: g.act_driver_id, plate: g.act_plate||'', car: g.act_car||'', color: g.act_color||'' }] : [];
+    }
+    if (!g.extraCars) g.extraCars = [];
     if (!g.hotel2)    g.hotel2    = '';
     if (!g.hotel2_id) g.hotel2_id = '';
     if (!g.room2)     g.room2     = '';
@@ -2642,8 +2700,9 @@ function showView(name) {
   if (tab) tab.classList.add('active');
 
   if (name === 'guest-list') renderGuestList();
-  if (name === 'arrivals') renderArrivals();
-  if (name === 'departures') renderDepartures();
+  if (name === 'arrivals')    renderArrivals();
+  if (name === 'departures')  renderDepartures();
+  if (name === 'act-schedule') renderActSchedule();
   if (name === 'meals') renderMeals();
   if (name === 'activities') renderActivities();
   if (name === 'events') renderEvents();
@@ -2870,21 +2929,32 @@ function renderGuestCards(guests) {
     const depDrvName  = drvName(g.dep_driver_id);
 
     const pillLink = 'cursor:pointer;transition:all 0.15s;';
+    // Build driver pills from new arrays (fall back to legacy single field)
+    const arrDrivers = g.arr_drivers?.length ? g.arr_drivers : (g.arr_driver_id ? [{driver_id:g.arr_driver_id,plate:g.arr_plate||'',car:'',color:''}] : []);
+    const depDrivers = g.dep_drivers?.length ? g.dep_drivers : (g.dep_driver_id ? [{driver_id:g.dep_driver_id,plate:g.dep_plate||'',car:'',color:''}] : []);
+
     const chapPill = arrChapName
       ? `<span class="pill" onclick="event.stopPropagation();navToRow('chaperones',${g.arr_chaperone_id})"
           style="background:rgba(26,39,68,0.08);color:var(--navy);border:1px solid rgba(26,39,68,0.15);font-size:0.65rem;${pillLink}"
           title="Go to Chaperones — ${esc(arrChapName)}">🤝 ${esc(arrChapName)}</span>`
       : '';
-    const arrDrvPill = arrDrvName
-      ? `<span class="pill" onclick="event.stopPropagation();navToRow('drivers',${g.arr_driver_id})"
-          style="background:rgba(26,39,68,0.06);color:var(--navy);border:1px solid rgba(26,39,68,0.12);font-size:0.65rem;${pillLink}"
-          title="Go to Drivers — ${esc(arrDrvName)}">🚗 ARR ${esc(arrDrvName)}${g.arr_plate?' · '+esc(g.arr_plate):''}</span>`
-      : '';
-    const depDrvPill = depDrvName && depDrvName !== arrDrvName
-      ? `<span class="pill" onclick="event.stopPropagation();navToRow('drivers',${g.dep_driver_id})"
-          style="background:rgba(26,39,68,0.06);color:var(--navy);border:1px solid rgba(26,39,68,0.12);font-size:0.65rem;${pillLink}"
-          title="Go to Drivers — ${esc(depDrvName)}">🚗 DEP ${esc(depDrvName)}${g.dep_plate?' · '+esc(g.dep_plate):''}</span>`
-      : '';
+    const arrDrvPills = arrDrivers.map(d => {
+      const name = d.driver_id ? drvName(d.driver_id) : '';
+      if (!name) return '';
+      return `<span class="pill" onclick="event.stopPropagation();navToRow('drivers',${d.driver_id})"
+        style="background:rgba(26,39,68,0.06);color:var(--navy);border:1px solid rgba(26,39,68,0.12);font-size:0.65rem;${pillLink}"
+        title="Go to Drivers — ${esc(name)}">🚗 ARR ${esc(name)}${d.plate?' · '+esc(d.plate):''}</span>`;
+    }).join('');
+    const depDrvPills = depDrivers.map(d => {
+      const name = d.driver_id ? drvName(d.driver_id) : '';
+      if (!name) return '';
+      // Only show dep if different from all arr drivers
+      const arrIds = arrDrivers.map(a => a.driver_id);
+      if (arrIds.includes(d.driver_id) && arrDrivers.length === 1 && depDrivers.length === 1) return '';
+      return `<span class="pill" onclick="event.stopPropagation();navToRow('drivers',${d.driver_id})"
+        style="background:rgba(26,39,68,0.06);color:var(--navy);border:1px solid rgba(26,39,68,0.12);font-size:0.65rem;${pillLink}"
+        title="Go to Drivers — ${esc(name)}">🚗 DEP ${esc(name)}${d.plate?' · '+esc(d.plate):''}</span>`;
+    }).join('');
 
     // Single-line ARR / DEP — flight · date · time · terminal
     const arrLine = (g.arr_date || g.arr_flight) ? (() => {
@@ -2939,7 +3009,18 @@ function renderGuestCards(guests) {
         </div>
       </div>
       <div class="guest-pills">${spousePill}${linkedPill}${hotelPill}</div>
-      ${chapPill || arrDrvPill || depDrvPill ? `<div class="guest-pills" style="margin-top:4px;">${chapPill}${arrDrvPill}${depDrvPill}</div>` : ''}
+      ${chapPill || arrDrvPills || depDrvPills ? `<div class="guest-pills" style="margin-top:4px;">${chapPill}${arrDrvPills}${depDrvPills}</div>` : ''}
+      ${(() => {
+        const actChapN = g.act_chaperone_id ? chapName(g.act_chaperone_id) : '';
+        const actDrvN  = g.act_driver_id    ? drvName(g.act_driver_id)    : '';
+        const extras   = g.extraCars || [];
+        if (!actChapN && !actDrvN && !extras.length) return '';
+        return `<div class="guest-pills" style="margin-top:4px;">
+          ${actChapN ? `<span class="pill" onclick="event.stopPropagation();navToRow('chaperones',${g.act_chaperone_id})" style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid rgba(124,58,237,0.2);font-size:0.65rem;cursor:pointer;">🤝 ACT ${esc(actChapN)}</span>` : ''}
+          ${actDrvN  ? `<span class="pill" onclick="event.stopPropagation();navToRow('drivers',${g.act_driver_id})" style="background:rgba(124,58,237,0.08);color:#7c3aed;border:1px solid rgba(124,58,237,0.15);font-size:0.65rem;cursor:pointer;">🚗 ACT ${esc(actDrvN)}${g.act_plate?' · '+esc(g.act_plate):''}</span>` : ''}
+          ${extras.length ? `<span class="pill" style="background:rgba(200,149,42,0.12);color:var(--gold);border:1px solid rgba(200,149,42,0.3);font-size:0.65rem;">+${extras.length} extra car${extras.length!==1?'s':''}</span>` : ''}
+        </div>`;
+      })()}
       ${arrLine}${depLine}
       ${(() => {
         const gName = g.name || '';
@@ -3024,6 +3105,208 @@ function renderGuestCards(guests) {
 }
 
 // Navigate to a register tab and highlight a specific row by ID
+// ═══════════════════════════════════════════
+//  LEG DRIVERS — multi-driver per arrival/departure/activity
+// ═══════════════════════════════════════════
+let _legDrivers = { arr: [], dep: [], act: [] };
+
+function addLegDriver(leg) {
+  _legDrivers[leg].push({ driver_id: '', plate: '', car: '', color: '' });
+  renderLegDriversList(leg);
+}
+function removeLegDriver(leg, i) {
+  _legDrivers[leg].splice(i, 1);
+  renderLegDriversList(leg);
+}
+
+function renderLegDriversList(leg) {
+  const el = document.getElementById(`${leg}_drivers_list`);
+  if (!el) return;
+  const list = _legDrivers[leg];
+  if (!list.length) {
+    el.innerHTML = `<div style="font-size:0.75rem;color:var(--slate-light);padding:4px 0;font-style:italic;">No driver assigned. Click "+ Add Driver" to assign one.</div>`;
+    return;
+  }
+  const drvOpts = db.drivers.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
+  el.innerHTML = list.map((d, i) => `
+    <div style="display:grid;grid-template-columns:1fr 100px 140px 100px auto;gap:6px;align-items:end;margin-bottom:6px;background:rgba(26,39,68,0.04);border:1px solid var(--border);border-radius:8px;padding:8px 10px;">
+      <div class="form-group" style="margin:0;">
+        <label style="font-size:0.65rem;color:var(--slate);">Driver</label>
+        <select id="${leg}_drv_id_${i}" onchange="syncLegDriverFields('${leg}',${i})" style="font-size:0.82rem;">
+          <option value="">— Select —</option>${drvOpts}
+        </select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label style="font-size:0.65rem;color:var(--slate);">Plate</label>
+        <input type="text" id="${leg}_drv_plate_${i}" value="${esc(d.plate)}" placeholder="Plate" style="font-size:0.82rem;">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label style="font-size:0.65rem;color:var(--slate);">Brand / Model</label>
+        <input type="text" id="${leg}_drv_car_${i}" value="${esc(d.car)}" placeholder="e.g. MB/GLC" style="font-size:0.82rem;">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label style="font-size:0.65rem;color:var(--slate);">Colour</label>
+        <input type="text" id="${leg}_drv_color_${i}" value="${esc(d.color)}" placeholder="e.g. White" style="font-size:0.82rem;">
+      </div>
+      <button type="button" onclick="removeLegDriver('${leg}',${i})" style="background:none;border:1px solid var(--red);border-radius:6px;color:var(--red);cursor:pointer;padding:5px 8px;font-size:0.8rem;align-self:end;">✕</button>
+    </div>`).join('');
+  // Restore driver selects
+  list.forEach((d, i) => {
+    const sel = document.getElementById(`${leg}_drv_id_${i}`);
+    if (sel && d.driver_id) sel.value = d.driver_id;
+  });
+}
+
+function syncLegDriverFields(leg, i) {
+  const sel = document.getElementById(`${leg}_drv_id_${i}`);
+  if (!sel || !sel.value) return;
+  const info = drvInfo(parseInt(sel.value));
+  const p = document.getElementById(`${leg}_drv_plate_${i}`);
+  const c = document.getElementById(`${leg}_drv_car_${i}`);
+  const co = document.getElementById(`${leg}_drv_color_${i}`);
+  if (p && !p.value)  p.value  = info.plate;
+  if (c && !c.value)  c.value  = info.car;
+  if (co && !co.value) co.value = info.color;
+}
+
+function getLegDriversFromForm(leg) {
+  return _legDrivers[leg].map((_, i) => ({
+    driver_id: parseInt(document.getElementById(`${leg}_drv_id_${i}`)?.value)    || '',
+    plate:     document.getElementById(`${leg}_drv_plate_${i}`)?.value.trim()   || '',
+    car:       document.getElementById(`${leg}_drv_car_${i}`)?.value.trim()     || '',
+    color:     document.getElementById(`${leg}_drv_color_${i}`)?.value.trim()   || '',
+  })).filter(d => d.driver_id || d.plate);
+}
+
+function renderAllLegDriverLists() {
+  ['arr','dep','act'].forEach(leg => renderLegDriversList(leg));
+}
+let _currentExtraCars = [];
+
+function addExtraCar() {
+  _currentExtraCars.push({ driver_id: '', plate: '', car: '', color: '', remark: '' });
+  renderExtraCarsList();
+}
+function removeExtraCar(i) {
+  _currentExtraCars.splice(i, 1);
+  renderExtraCarsList();
+}
+function renderExtraCarsList() {
+  const el = document.getElementById('extraCarsList');
+  if (!el) return;
+  if (!_currentExtraCars.length) {
+    el.innerHTML = '<div style="font-size:0.78rem;color:var(--slate-light);font-style:italic;padding:4px 0;">No extra cars. Click "+ Add Car" to add additional vehicles for this group.</div>';
+    return;
+  }
+  const drvOpts = db.drivers.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
+  el.innerHTML = _currentExtraCars.map((c, i) => `
+    <div style="display:grid;grid-template-columns:1fr 120px 160px 120px 1fr auto;gap:8px;align-items:end;background:rgba(200,149,42,0.05);border:1px solid rgba(200,149,42,0.2);border-radius:8px;padding:10px 12px;">
+      <div class="form-group" style="margin:0;">
+        <label style="font-size:0.68rem;">Driver</label>
+        <select id="ec_driver_${i}" onchange="syncExtraCarFields(${i})" style="font-size:0.82rem;">
+          <option value="">— Select —</option>${drvOpts}
+        </select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label style="font-size:0.68rem;">Car Plate</label>
+        <input type="text" id="ec_plate_${i}" value="${esc(c.plate)}" placeholder="Plate" style="font-size:0.82rem;">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label style="font-size:0.68rem;">Brand / Model</label>
+        <input type="text" id="ec_car_${i}" value="${esc(c.car)}" placeholder="e.g. MB/GLC" style="font-size:0.82rem;">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label style="font-size:0.68rem;">Colour</label>
+        <input type="text" id="ec_color_${i}" value="${esc(c.color)}" placeholder="e.g. White" style="font-size:0.82rem;">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label style="font-size:0.68rem;">Purpose / Remark</label>
+        <input type="text" id="ec_remark_${i}" value="${esc(c.remark)}" placeholder="e.g. Luggage car" style="font-size:0.82rem;">
+      </div>
+      <button type="button" onclick="removeExtraCar(${i})" style="background:none;border:1px solid var(--red);border-radius:6px;color:var(--red);cursor:pointer;padding:6px 10px;font-size:0.82rem;align-self:end;">✕</button>
+    </div>`).join('');
+  _currentExtraCars.forEach((c, i) => {
+    const sel = document.getElementById(`ec_driver_${i}`);
+    if (sel && c.driver_id) sel.value = c.driver_id;
+  });
+}
+function syncExtraCarFields(i) {
+  const sel = document.getElementById(`ec_driver_${i}`);
+  if (!sel || !sel.value) return;
+  const info = drvInfo(parseInt(sel.value));
+  const p = document.getElementById(`ec_plate_${i}`);
+  const ca = document.getElementById(`ec_car_${i}`);
+  const co = document.getElementById(`ec_color_${i}`);
+  if (p) p.value = info.plate;
+  if (ca) ca.value = info.car;
+  if (co) co.value = info.color;
+}
+function getExtraCarsFromForm() {
+  return _currentExtraCars.map((_, i) => ({
+    driver_id: parseInt(document.getElementById(`ec_driver_${i}`)?.value) || '',
+    plate:  document.getElementById(`ec_plate_${i}`)?.value.trim()  || '',
+    car:    document.getElementById(`ec_car_${i}`)?.value.trim()    || '',
+    color:  document.getElementById(`ec_color_${i}`)?.value.trim()  || '',
+    remark: document.getElementById(`ec_remark_${i}`)?.value.trim() || '',
+  })).filter(c => c.driver_id || c.plate || c.car);
+}
+
+// ═══════════════════════════════════════════
+//  ACTIVITY SCHEDULE VIEW
+// ═══════════════════════════════════════════
+function renderActSchedule() {
+  syncDerivedArrays();
+  const filterSel = document.getElementById('actSchedFilter');
+  if (filterSel) {
+    const cur = filterSel.value;
+    filterSel.innerHTML = '<option value="">All Activities</option>' +
+      db.activityOptions.map((a,i) => `<option value="${i}">${esc(a.name)}</option>`).join('');
+    if (cur) filterSel.value = cur;
+  }
+  const q = (document.getElementById('actSchedSearch')?.value || '').toLowerCase();
+  const filterAct = document.getElementById('actSchedFilter')?.value ?? '';
+  const body = document.getElementById('actSchedBody');
+  if (!body) return;
+  const rows = [];
+  let rowNum = 0;
+  db.activityOptions.forEach((act, ai) => {
+    if (filterAct !== '' && parseInt(filterAct) !== ai) return;
+    db.guests.filter(g => g.activityAttendance?.[ai]).forEach(g => {
+      if (q && !(g.name||'').toLowerCase().includes(q) && !(act.name||'').toLowerCase().includes(q)) return;
+      const spouseAtt = g.activitySpouseAttendance?.[ai];
+      const addlAtt   = (g.activityAdditionalAttendance||[]).map((arr,pi) =>
+        (Array.isArray(arr)?arr[ai]:arr) ? ((g.additionalGuests||[])[pi]?.name||'') : ''
+      ).filter(Boolean);
+      const attending = [spouseAtt&&g.spouse&&g.spouse!=='-'?g.spouse:'', ...addlAtt].filter(Boolean).join(', ');
+      const actChapName = g.act_chaperone_id ? chapName(g.act_chaperone_id) : '';
+      const actDrvName  = g.act_driver_id    ? drvName(g.act_driver_id)    : '';
+      const extraCars   = g.extraCars || [];
+      const extraCell   = extraCars.length ? extraCars.map(c => {
+        const dn = c.driver_id ? drvName(c.driver_id) : '';
+        return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:0.7rem;background:rgba(200,149,42,0.1);border:1px solid rgba(200,149,42,0.3);border-radius:4px;padding:1px 6px;">🚗 ${esc(dn||c.plate||'?')}${c.plate?' · '+esc(c.plate):''}${c.remark?' ('+esc(c.remark)+')':''}</span>`;
+      }).join(' ') : '—';
+      rowNum++;
+      rows.push(`<tr>
+        <td>${rowNum}</td>
+        <td style="font-weight:600;font-size:0.84rem;">${esc(act.name)}</td>
+        <td>${fmtDate(act.date)}</td>
+        <td>${dayOfWeek(act.date)}</td>
+        <td class="td-time">${fmtTime(act.time)}</td>
+        <td style="font-size:0.78rem;">${esc(act.location)||'—'}</td>
+        <td class="td-name"><strong>${esc(g.name)}</strong></td>
+        <td style="font-size:0.78rem;">${esc(attending)||'—'}</td>
+        <td style="font-size:0.78rem;">${actChapName||'<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;">🤝 ?</span>'}</td>
+        <td style="font-size:0.78rem;">${actDrvName  ||'<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;">🚗 ?</span>'}</td>
+        <td style="font-size:0.78rem;white-space:nowrap;">${esc(g.act_plate)||'—'}</td>
+        <td style="font-size:0.78rem;">${esc(g.act_car)||'—'}</td>
+        <td>${extraCell}</td>
+        <td style="font-size:0.75rem;color:var(--slate-light);">${esc(g.act_remarks)||'—'}</td>
+      </tr>`);
+    });
+  });
+  body.innerHTML = rows.join('') || `<tr><td colspan="14" style="text-align:center;padding:30px;color:var(--slate-light);">No activity sign-ups yet.</td></tr>`;
+}
+
 function navToRow(tab, id) {
   showView(tab);
   // Wait for render then scroll to and highlight the row
@@ -3469,12 +3752,21 @@ function saveGuest(e) {
     arr_date: document.getElementById('f_arr_date').value,
     arr_time: document.getElementById('f_arr_time').value,
     arr_terminal: document.getElementById('f_arr_terminal').value,
+    act_chaperone_id: parseInt(document.getElementById('f_act_chaperone_id')?.value) || '',
+    act_drivers:   getLegDriversFromForm('act'),
+    act_driver_id: getLegDriversFromForm('act')[0]?.driver_id || '',
+    act_plate:     getLegDriversFromForm('act')[0]?.plate     || '',
+    act_car:       getLegDriversFromForm('act')[0]?.car       || '',
+    act_color:     getLegDriversFromForm('act')[0]?.color     || '',
+    act_remarks:   document.getElementById('f_act_remarks')?.value.trim() || '',
+    extraCars: getExtraCarsFromForm(),
     arr_chaperone_id: parseInt(document.getElementById('f_arr_chaperone_id').value) || '',
-    arr_driver_id:    parseInt(document.getElementById('f_arr_driver_id').value)    || '',
-    arr_plate: document.getElementById('f_arr_plate').value.trim(),
-    arr_car:   document.getElementById('f_arr_car').value.trim(),
-    arr_color: document.getElementById('f_arr_color').value.trim(),
-    arr_remarks: document.getElementById('f_arr_remarks').value.trim(),
+    arr_drivers:   getLegDriversFromForm('arr'),
+    arr_driver_id: getLegDriversFromForm('arr')[0]?.driver_id || '',
+    arr_plate:     getLegDriversFromForm('arr')[0]?.plate     || '',
+    arr_car:       getLegDriversFromForm('arr')[0]?.car       || '',
+    arr_color:     getLegDriversFromForm('arr')[0]?.color     || '',
+    arr_remarks: document.getElementById('f_arr_remarks')?.value.trim() || '',
     dep_flight: document.getElementById('f_dep_flight').value.trim(),
     dep_carrier: document.getElementById('f_dep_carrier').value.trim(),
     dep_to: document.getElementById('f_dep_to').value.trim(),
@@ -3482,10 +3774,11 @@ function saveGuest(e) {
     dep_time: document.getElementById('f_dep_time').value,
     dep_terminal: document.getElementById('f_dep_terminal').value,
     dep_chaperone_id: parseInt(document.getElementById('f_dep_chaperone_id').value) || '',
-    dep_driver_id:    parseInt(document.getElementById('f_dep_driver_id').value)    || '',
-    dep_plate: document.getElementById('f_dep_plate').value.trim(),
-    dep_car:   document.getElementById('f_dep_car').value.trim(),
-    dep_color: document.getElementById('f_dep_color').value.trim(),
+    dep_drivers:   getLegDriversFromForm('dep'),
+    dep_driver_id: getLegDriversFromForm('dep')[0]?.driver_id || '',
+    dep_plate:     getLegDriversFromForm('dep')[0]?.plate     || '',
+    dep_car:       getLegDriversFromForm('dep')[0]?.car       || '',
+    dep_color:     getLegDriversFromForm('dep')[0]?.color     || '',
     dep_remarks: document.getElementById('f_dep_remarks').value.trim(),
     hotel: document.getElementById('f_hotel').value.trim(),
     hotel_id: parseInt(document.getElementById('f_hotel_id').value) || '',
@@ -3571,6 +3864,7 @@ function editGuest(id) {
       'hotel2','room2','checkin2','checkout2',
       'early_checkin2_date','early_checkin2_time','late_checkout2_date','late_checkout2_time',
       'session1','respond1','session2','respond2',
+      'act_plate','act_car','act_color','act_remarks',
       'allergen','foodpref','bevhot','bevcold','remark1','remark2'];
     fields.forEach(f => {
       const el = document.getElementById('f_' + f);
@@ -3617,26 +3911,18 @@ function editGuest(id) {
         _currentDietaryInfo[0] = { allergen: '', foodpref: '', bevhot: g.bevhot||'', bevcold: g.bevcold||'', remark: '' };
       }
     }
-    // Restore chaperone/driver selects and sync car details from driver register
+    // Restore chaperone/driver selects
     populateChaperoneDriverSelects();
+    _currentExtraCars = (g.extraCars || []).map(c => ({...c}));
+    _legDrivers.arr = (g.arr_drivers || []).map(d => ({...d}));
+    _legDrivers.dep = (g.dep_drivers || []).map(d => ({...d}));
+    _legDrivers.act = (g.act_drivers || []).map(d => ({...d}));
+    renderExtraCarsList();
+    renderAllLegDriverLists();
     setTimeout(() => {
-      ['arr','dep'].forEach(leg => {
+      ['arr','dep','act'].forEach(leg => {
         const cs = document.getElementById(`f_${leg}_chaperone_id`);
-        const ds = document.getElementById(`f_${leg}_driver_id`);
         if (cs) cs.value = g[`${leg}_chaperone_id`] || '';
-        if (ds) {
-          ds.value = g[`${leg}_driver_id`] || '';
-          // Pull latest car info from driver register
-          if (ds.value) {
-            const info = drvInfo(parseInt(ds.value));
-            const plate = document.getElementById(`f_${leg}_plate`);
-            const car   = document.getElementById(`f_${leg}_car`);
-            const color = document.getElementById(`f_${leg}_color`);
-            if (plate) plate.value = info.plate || g[`${leg}_plate`] || '';
-            if (car)   car.value   = info.car   || g[`${leg}_car`]   || '';
-            if (color) color.value = info.color || g[`${leg}_color`] || '';
-          }
-        }
       });
     }, 20);
     if (g.photo) {
@@ -3685,7 +3971,11 @@ function clearForm() {
   toggleStay2(false);
   _currentAdditionalGuests = [];
   _currentDietaryInfo = [];
+  _currentExtraCars = [];
+  _legDrivers = { arr: [], dep: [], act: [] };
   renderAdditionalGuestsList([]);
+  renderExtraCarsList();
+  renderAllLegDriverLists();
 }
 
 async function deleteGuest(id) {
@@ -3964,7 +4254,14 @@ function renderArrivals() {
       <td class="td-name">${esc(g.name)}</td>
       <td style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
       <td style="font-size:0.78rem;">${g.arr_chaperone_id ? esc(chapName(g.arr_chaperone_id)) : '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;white-space:nowrap;">🤝 ?</span>'}</td>
-      <td style="font-size:0.78rem;">${g.arr_driver_id   ? esc(drvName(g.arr_driver_id))   : '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;white-space:nowrap;">🚗 ?</span>'}</td>
+      <td style="font-size:0.78rem;">${(() => {
+        const drivers = g.arr_drivers?.length ? g.arr_drivers : (g.arr_driver_id ? [{driver_id:g.arr_driver_id,plate:g.arr_plate||''}] : []);
+        if (!drivers.length) return '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;white-space:nowrap;">🚗 ?</span>';
+        return drivers.map(d => {
+          const name = d.driver_id ? drvName(d.driver_id) : '';
+          return `<div style="white-space:nowrap;">${esc(name||'?')}${d.plate ? ' <span style="color:var(--slate-light);font-size:0.72rem;">· '+esc(d.plate)+'</span>' : ''}</div>`;
+        }).join('');
+      })()}</td>
       <td style="font-size:0.75rem;color:var(--slate-light);">${esc(g.arr_remarks)||'—'}</td>
     </tr>`).join('');
 }
@@ -3992,7 +4289,14 @@ function renderDepartures() {
       <td class="td-name">${esc(g.name)}</td>
       <td style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
       <td style="font-size:0.78rem;">${g.dep_chaperone_id ? esc(chapName(g.dep_chaperone_id)) : '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;white-space:nowrap;">🤝 ?</span>'}</td>
-      <td style="font-size:0.78rem;">${g.dep_driver_id   ? esc(drvName(g.dep_driver_id))   : '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;white-space:nowrap;">🚗 ?</span>'}</td>
+      <td style="font-size:0.78rem;">${(() => {
+        const drivers = g.dep_drivers?.length ? g.dep_drivers : (g.dep_driver_id ? [{driver_id:g.dep_driver_id,plate:g.dep_plate||''}] : []);
+        if (!drivers.length) return '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;white-space:nowrap;">🚗 ?</span>';
+        return drivers.map(d => {
+          const name = d.driver_id ? drvName(d.driver_id) : '';
+          return `<div style="white-space:nowrap;">${esc(name||'?')}${d.plate ? ' <span style="color:var(--slate-light);font-size:0.72rem;">· '+esc(d.plate)+'</span>' : ''}</div>`;
+        }).join('');
+      })()}</td>
       <td style="font-size:0.75rem;color:var(--slate-light);">${esc(g.dep_remarks)||'—'}</td>
     </tr>`).join('');
 }
@@ -4928,7 +5232,7 @@ function populateChaperoneDriverSelects() {
   const blankOpt = '<option value="">— None —</option>';
   const chapOpts = blankOpt + db.chaperones.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
   const drvOpts  = blankOpt + db.drivers.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
-  ['arr','dep'].forEach(leg => {
+  ['arr','dep','act'].forEach(leg => {
     const cs = document.getElementById(`f_${leg}_chaperone_id`);
     const ds = document.getElementById(`f_${leg}_driver_id`);
     if (cs) cs.innerHTML = chapOpts;
@@ -5138,11 +5442,20 @@ function renderDrivers() {
 
   const dragStyle = reorder ? 'cursor:grab;' : '';
   body.innerHTML = ordered.map((d, i) => {
-    const assigned = db.guests.filter(g =>
-      g.arr_driver_id == d.id || g.dep_driver_id == d.id
-    ).map(g => esc(g.name)).join(', ') || '—';
-    // Auto-compute status from guest assignments
-    const isAssigned  = db.guests.some(g => g.arr_driver_id == d.id || g.dep_driver_id == d.id);
+    // Auto-compute status — check single field AND new drivers arrays
+    const isAssigned = db.guests.some(g => {
+      if (g.arr_driver_id == d.id || g.dep_driver_id == d.id || g.act_driver_id == d.id) return true;
+      const allDriverIds = [
+        ...(g.arr_drivers||[]), ...(g.dep_drivers||[]),
+        ...(g.act_drivers||[]), ...(g.extraCars||[])
+      ].map(x => x.driver_id);
+      return allDriverIds.includes(d.id) || allDriverIds.includes(String(d.id));
+    });
+    const assigned = db.guests.filter(g => {
+      if (g.arr_driver_id == d.id || g.dep_driver_id == d.id || g.act_driver_id == d.id) return true;
+      return [...(g.arr_drivers||[]),...(g.dep_drivers||[]),...(g.act_drivers||[]),...(g.extraCars||[])]
+        .some(x => x.driver_id == d.id);
+    }).map(g => esc(g.name)).join(', ') || '—';
     const autoStatus  = d.unavailable ? 'Unavailable' : isAssigned ? 'Assigned' : 'Free';
     const statusColor = autoStatus === 'Assigned' ? 'var(--green)' : autoStatus === 'Unavailable' ? 'var(--red)' : 'var(--slate-light)';
     const statusBg    = autoStatus === 'Assigned' ? 'rgba(45,122,79,0.1)' : autoStatus === 'Unavailable' ? 'rgba(197,48,48,0.1)' : 'transparent';
@@ -6443,7 +6756,7 @@ function confirmDeleteCancel() {
 }
 
 // ── Set your team password here ──────────────
-const APP_PASSWORD = 'PYLJJ';
+const APP_PASSWORD = 'APS2026';
 // ─────────────────────────────────────────────
 
 const SESSION_KEY = 'aps2026_auth';
