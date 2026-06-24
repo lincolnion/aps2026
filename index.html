@@ -178,6 +178,7 @@
   .main { padding: 24px; max-width: 1400px; margin: 0 auto; }
   .view { display: none; }
   .view.active { display: block; }
+  #view-notes.active { display: flex; position: relative; overflow: hidden; }
 
   /* ── SECTION TITLE ── */
   .section-title {
@@ -616,6 +617,33 @@
     opacity: 0.4;
     transform: scale(0.97);
   }
+  /* ── Notes ── */
+  .note-tb-btn {
+    background: white; border: 1px solid var(--border); border-radius: 5px;
+    padding: 3px 7px; font-size: 0.8rem; cursor: pointer; color: var(--navy);
+    font-family: inherit; line-height: 1; transition: background 0.12s, border-color 0.12s; flex-shrink: 0;
+  }
+  .note-tb-btn:hover { background: var(--tag-bg); border-color: var(--gold); }
+  .note-tb-btn:active { background: var(--gold); color: white; }
+  .note-page-item {
+    display: flex; flex-direction: column; padding: 9px 10px; border-radius: 7px; cursor: pointer;
+    color: rgba(255,255,255,0.65); font-size: 0.78rem; transition: all 0.14s;
+    border: 1px solid transparent; margin-bottom: 3px; user-select: none;
+  }
+  .note-page-item:hover { background: rgba(255,255,255,0.08); color: white; }
+  .note-page-item.active { background: rgba(200,149,42,0.18); border-color: rgba(200,149,42,0.4); color: var(--gold-light); font-weight: 600; }
+  .note-page-item .note-page-row { display: flex; align-items: center; gap: 8px; }
+  .note-page-item .note-dot { width:10px;height:10px;border-radius:50%;flex-shrink:0;border:1px solid rgba(255,255,255,0.2); }
+  .note-page-item .note-meta { font-size:0.6rem;color:rgba(255,255,255,0.28);margin-top:2px;padding-left:18px; }
+  .note-page-item.active .note-meta { color:rgba(200,149,42,0.6); }
+  #noteEditor h1 { font-size:1.5rem;font-weight:700;color:var(--navy);margin:16px 0 8px;border-bottom:2px solid var(--gold);padding-bottom:4px; }
+  #noteEditor h2 { font-size:1.15rem;font-weight:700;color:var(--navy);margin:14px 0 6px; }
+  #noteEditor h3 { font-size:0.98rem;font-weight:700;color:var(--slate);margin:10px 0 4px; }
+  #noteEditor ul, #noteEditor ol { padding-left:24px;margin:6px 0; }
+  #noteEditor li { margin:3px 0; }
+  #noteEditor hr { border:none;border-top:1px solid var(--border);margin:14px 0; }
+  #noteEditor p { margin:4px 0; }
+
   tr.row-highlight td {
     background: rgba(200,149,42,0.18) !important;
     transition: background 0.3s;
@@ -674,15 +702,16 @@
   <div class="nav-tab" data-view="add-guest">➕ Add / Edit Guest</div>
   <div class="nav-tab" data-view="arrivals">✈️ Arrivals</div>
   <div class="nav-tab" data-view="departures">🛫 Departures</div>
-  <div class="nav-tab" data-view="act-schedule">🎯 Activities</div>
+  <div class="nav-tab" data-view="act-schedule">🚶 Activity Schedule</div>
   <div class="nav-tab" data-view="meals">🍽️ Meals</div>
-  <div class="nav-tab" data-view="activities">🎯 Activities</div>
+  <div class="nav-tab" data-view="activities">🐠 Activity Options</div>
   <div class="nav-tab" data-view="events">📅 Events</div>
   <div class="nav-tab" data-view="hotel">🏨 Hotel</div>
   <div class="nav-tab" data-view="chaperones">🤝 Chaperones</div>
   <div class="nav-tab" data-view="drivers">🚗 Drivers</div>
   <div class="nav-tab" data-view="checkin" style="color:var(--gold-light);font-weight:700;">✅ Check-In</div>
   <div class="nav-tab" data-view="seating">🪑 Seating</div>
+  <div class="nav-tab" data-view="notes">📝 Notes</div>
 </nav>
 
 <main class="main">
@@ -1062,7 +1091,7 @@
 
         <!-- Activity Transport -->
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
-          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#7c3aed;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--border);">🎯 Activity Transport</div>
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#7c3aed;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--border);">🚶 Activity Transport</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
             <div class="form-grid">
               <div class="form-group">
@@ -1265,7 +1294,7 @@
 
   <!-- ──────────────── ACTIVITY SCHEDULE ──────────────── -->
   <div class="view" id="view-act-schedule">
-    <div class="section-title">Activity Schedule</div>
+    <div class="section-title">🚶 Activity Schedule</div>
     <div class="section-desc">Guests signed up for activities — with assigned chaperone and driver.</div>
     <div class="toolbar" style="margin-bottom:14px;">
       <div class="search-box">
@@ -1284,8 +1313,6 @@
             <th>Guest</th><th>Spouse / Addl</th>
             <th>Chaperone</th>
             <th style="color:var(--gold);">Driver</th>
-            <th>Car Plate</th><th>Car</th>
-            <th>Extra Cars</th>
             <th>Remarks</th>
           </tr>
         </thead>
@@ -1460,6 +1487,60 @@
         <thead><tr><th style="width:28px;"></th><th>#</th><th>Name</th><th>Contact</th><th>Car Plate</th><th>Brand / Model</th><th>Colour</th><th>Remark</th><th>Assigned Guests</th><th>Status</th><th></th></tr></thead>
         <tbody id="driverBody"></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- ──────────────── NOTES ──────────────── -->
+  <div class="view" id="view-notes" style="padding:0;height:calc(100vh - 130px);overflow:hidden;">
+
+    <!-- Sidebar -->
+    <div id="notesSidebar" style="width:220px;flex-shrink:0;background:rgba(18,32,58,0.96);display:flex;flex-direction:column;border-right:1px solid rgba(200,149,42,0.2);">
+      <div style="padding:14px 12px 10px;border-bottom:1px solid rgba(255,255,255,0.08);">
+        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--gold-light);margin-bottom:10px;">📝 Notes</div>
+        <button onclick="addNotePage()" style="width:100%;background:var(--gold);color:white;border:none;border-radius:6px;padding:7px 10px;font-size:0.78rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">+ New Page</button>
+      </div>
+      <div id="notePagesList" style="flex:1;overflow-y:auto;padding:8px 6px;scrollbar-width:thin;"></div>
+    </div>
+
+    <!-- Editor area -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;background:rgba(255,255,255,0.97);">
+      <!-- Toolbar -->
+      <div id="notesToolbar" style="display:flex;align-items:center;gap:3px;padding:7px 14px;border-bottom:1px solid var(--border);background:rgba(248,244,236,0.98);flex-wrap:wrap;min-height:44px;">
+        <input type="text" id="noteTitle" placeholder="Page title…"
+          style="font-size:1rem;font-weight:700;color:var(--navy);border:none;background:transparent;outline:none;min-width:160px;flex:1;font-family:inherit;padding:2px 4px;"
+          oninput="updateNoteTitle(this.value)">
+        <div style="width:1px;height:22px;background:var(--border);margin:0 5px;flex-shrink:0;"></div>
+        <button onclick="noteCmd('bold')"                 title="Bold"          class="note-tb-btn"><b>B</b></button>
+        <button onclick="noteCmd('italic')"               title="Italic"        class="note-tb-btn"><i>I</i></button>
+        <button onclick="noteCmd('underline')"            title="Underline"     class="note-tb-btn"><u>U</u></button>
+        <button onclick="noteCmd('strikeThrough')"        title="Strikethrough" class="note-tb-btn"><s>S</s></button>
+        <div style="width:1px;height:22px;background:var(--border);margin:0 4px;flex-shrink:0;"></div>
+        <button onclick="noteFormatBlock('h1')" title="Heading 1" class="note-tb-btn" style="font-size:0.68rem;font-weight:800;">H1</button>
+        <button onclick="noteFormatBlock('h2')" title="Heading 2" class="note-tb-btn" style="font-size:0.68rem;font-weight:700;">H2</button>
+        <button onclick="noteFormatBlock('h3')" title="Heading 3" class="note-tb-btn" style="font-size:0.68rem;font-weight:600;">H3</button>
+        <button onclick="noteFormatBlock('p')"  title="Normal"    class="note-tb-btn" style="font-size:0.68rem;">¶</button>
+        <div style="width:1px;height:22px;background:var(--border);margin:0 4px;flex-shrink:0;"></div>
+        <button onclick="noteCmd('insertUnorderedList')" title="Bullets"  class="note-tb-btn">•≡</button>
+        <button onclick="noteCmd('insertOrderedList')"   title="Numbered" class="note-tb-btn">1≡</button>
+        <button onclick="noteCmd('indent')"              title="Indent"   class="note-tb-btn" style="font-size:0.8rem;">⇥</button>
+        <button onclick="noteCmd('outdent')"             title="Outdent"  class="note-tb-btn" style="font-size:0.8rem;">⇤</button>
+        <div style="width:1px;height:22px;background:var(--border);margin:0 4px;flex-shrink:0;"></div>
+        <button onclick="noteInsertHr()"    title="Divider"  class="note-tb-btn">—</button>
+        <button onclick="noteInsertDate()"  title="Insert date" class="note-tb-btn" style="font-size:0.72rem;">📅</button>
+        <div style="width:1px;height:22px;background:var(--border);margin:0 4px;flex-shrink:0;"></div>
+        <span style="font-size:0.62rem;color:var(--slate-light);flex-shrink:0;">Colour:</span>
+        <span id="noteColorDots" style="display:flex;gap:4px;align-items:center;"></span>
+        <div style="flex:1;"></div>
+        <span id="noteAutoSaveMsg" style="font-size:0.68rem;color:var(--slate-light);margin-right:8px;"></span>
+        <button onclick="deleteCurrentNote()" title="Delete page" style="background:none;border:1px solid rgba(192,57,43,0.3);cursor:pointer;color:var(--red);font-size:0.72rem;padding:3px 10px;border-radius:5px;flex-shrink:0;">🗑 Delete</button>
+      </div>
+      <!-- Editor body -->
+      <div id="noteEditor" contenteditable="true"
+        spellcheck="true"
+        style="flex:1;overflow-y:auto;padding:28px 40px;font-size:0.92rem;line-height:1.8;color:var(--navy);outline:none;font-family:inherit;"
+        oninput="onNoteInput()"
+        onkeydown="onNoteKeydown(event)">
+      </div>
     </div>
   </div>
 
@@ -1939,7 +2020,8 @@ let db = {
   activityCompanions: {},  // { actIdx: [{ name, role }] } — companions per activity
   guestOrder:     [],   // custom display order — array of guest IDs
   driverOrder:    [],   // custom display order — array of driver IDs
-  chaperoneOrder: []    // custom display order — array of chaperone IDs
+  chaperoneOrder: [],   // custom display order — array of chaperone IDs
+  notes:          []    // [{ id, title, content, color, pinned, updatedAt }]
 };
 // ── Computed getters: derive meals/activities from db.events (single source of truth) ──
 function getMealEvents() {
@@ -2014,6 +2096,7 @@ function migrateDB() {
   if (!db.activityCompanions)  db.activityCompanions  = {};
   if (!db.driverOrder || !db.driverOrder.length)       db.driverOrder    = db.drivers.map(d => d.id);
   if (!db.chaperoneOrder || !db.chaperoneOrder.length) db.chaperoneOrder = db.chaperones.map(c => c.id);
+  if (!db.notes) db.notes = [];
   if (!db.guestOrder || !db.guestOrder.length) {
     db.guestOrder = db.guests.map(g => g.id);
   }
@@ -2703,6 +2786,7 @@ function showView(name) {
   if (name === 'arrivals')    renderArrivals();
   if (name === 'departures')  renderDepartures();
   if (name === 'act-schedule') renderActSchedule();
+  if (name === 'notes')        initNotes();
   if (name === 'meals') renderMeals();
   if (name === 'activities') renderActivities();
   if (name === 'events') renderEvents();
@@ -3104,7 +3188,192 @@ function renderGuestCards(guests) {
   }).join('');
 }
 
-// Navigate to a register tab and highlight a specific row by ID
+// ═══════════════════════════════════════════
+//  NOTES — multi-page rich text notebook
+// ═══════════════════════════════════════════
+let _currentNoteId = null;
+let _noteSaveTimer = null;
+const NOTE_COLORS  = ['#ffffff','#fffde7','#e3f2fd','#e8f5e9','#fce4ec','#f3e5f5','#e0f2f1','#fff3e0'];
+const NOTE_COLOR_LABELS = ['White','Yellow','Blue','Green','Pink','Purple','Teal','Orange'];
+
+function initNotes() {
+  if (!db.notes) db.notes = [];
+  renderNoteColorDots();
+  renderNotePagesList();
+  if (db.notes.length) {
+    const first = db.notes.find(n => n.pinned) || db.notes[0];
+    openNote(first.id);
+  } else {
+    document.getElementById('noteEditor').innerHTML = '<p style="color:var(--slate-light);font-style:italic;">Create a new page to start writing…</p>';
+    document.getElementById('noteTitle').value = '';
+    document.getElementById('noteEditor').style.background = '#fff';
+  }
+}
+
+function renderNoteColorDots() {
+  const el = document.getElementById('noteColorDots');
+  if (!el) return;
+  el.innerHTML = NOTE_COLORS.map((c, i) =>
+    `<button onclick="setNoteColor('${c}')" title="${NOTE_COLOR_LABELS[i]}"
+      style="width:15px;height:15px;background:${c};border:1.5px solid #bbb;border-radius:50%;cursor:pointer;flex-shrink:0;transition:transform 0.1s;"
+      onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform=''"></button>`
+  ).join('');
+}
+
+function renderNotePagesList() {
+  const el = document.getElementById('notePagesList');
+  if (!el) return;
+  if (!db.notes || !db.notes.length) {
+    el.innerHTML = '<div style="padding:12px 8px;font-size:0.72rem;color:rgba(255,255,255,0.3);font-style:italic;">No pages yet</div>';
+    return;
+  }
+  // Sort: pinned first, then by updatedAt descending
+  const sorted = [...db.notes].sort((a, b) => {
+    if (a.pinned && !b.pinned) return -1;
+    if (!a.pinned && b.pinned) return 1;
+    return (b.updatedAt||0) - (a.updatedAt||0);
+  });
+  el.innerHTML = sorted.map(n => {
+    const isActive = n.id === _currentNoteId;
+    const preview  = (n.content || '').replace(/<[^>]+>/g,'').substring(0, 40) || '…';
+    const dot      = n.color && n.color !== '#ffffff' ? `background:${n.color};` : 'background:rgba(255,255,255,0.25);';
+    const pin      = n.pinned ? '📌 ' : '';
+    const date     = n.updatedAt ? new Date(n.updatedAt).toLocaleDateString('en-SG',{day:'2-digit',month:'short'}) : '';
+    return `<div class="note-page-item ${isActive?'active':''}" onclick="openNote(${n.id})">
+      <div class="note-page-row">
+        <span class="note-dot" style="${dot}"></span>
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pin}${esc(n.title||'Untitled')}</span>
+        <button onclick="event.stopPropagation();toggleNotePin(${n.id})" title="${n.pinned?'Unpin':'Pin'}"
+          style="background:none;border:none;cursor:pointer;padding:0 2px;font-size:0.7rem;opacity:${n.pinned?'1':'0.35'};">${n.pinned?'📌':'📌'}</button>
+      </div>
+      <div class="note-meta">${date} · ${esc(preview)}</div>
+    </div>`;
+  }).join('');
+}
+
+function openNote(id) {
+  _currentNoteId = id;
+  const n = (db.notes||[]).find(x => x.id === id);
+  if (!n) return;
+  const editor = document.getElementById('noteEditor');
+  const title  = document.getElementById('noteTitle');
+  if (editor) { editor.innerHTML = n.content || ''; editor.style.background = n.color || '#fff'; }
+  if (title)  title.value = n.title || '';
+  renderNotePagesList();
+  document.getElementById('noteAutoSaveMsg').textContent = '';
+  // Focus editor
+  setTimeout(() => editor?.focus(), 50);
+}
+
+function addNotePage() {
+  if (!db.notes) db.notes = [];
+  const newNote = {
+    id: Date.now(),
+    title: 'New Page',
+    content: '',
+    color: '#ffffff',
+    pinned: false,
+    updatedAt: Date.now()
+  };
+  db.notes.unshift(newNote);
+  saveDB();
+  _currentNoteId = newNote.id;
+  renderNotePagesList();
+  const editor = document.getElementById('noteEditor');
+  const title  = document.getElementById('noteTitle');
+  if (editor) { editor.innerHTML = ''; editor.style.background = '#fff'; editor.focus(); }
+  if (title)  { title.value = 'New Page'; title.select(); }
+  document.getElementById('noteAutoSaveMsg').textContent = '';
+}
+
+async function deleteCurrentNote() {
+  if (!_currentNoteId) return;
+  const n = (db.notes||[]).find(x => x.id === _currentNoteId);
+  if (!await confirmDelete('Delete Note Page', `Delete <strong>${esc(n?.title||'this page')}</strong>? This cannot be undone.`)) return;
+  db.notes = (db.notes||[]).filter(x => x.id !== _currentNoteId);
+  _currentNoteId = null;
+  saveDB();
+  renderNotePagesList();
+  if (db.notes.length) openNote(db.notes[0].id);
+  else {
+    document.getElementById('noteEditor').innerHTML = '<p style="color:var(--slate-light);font-style:italic;">Create a new page to start writing…</p>';
+    document.getElementById('noteTitle').value = '';
+    document.getElementById('noteEditor').style.background = '#fff';
+  }
+}
+
+function updateNoteTitle(val) {
+  if (!_currentNoteId) return;
+  const n = (db.notes||[]).find(x => x.id === _currentNoteId);
+  if (n) { n.title = val; n.updatedAt = Date.now(); }
+  renderNotePagesList();
+  scheduleNoteSave();
+}
+
+function setNoteColor(color) {
+  if (!_currentNoteId) return;
+  const n = (db.notes||[]).find(x => x.id === _currentNoteId);
+  if (n) { n.color = color; n.updatedAt = Date.now(); }
+  const editor = document.getElementById('noteEditor');
+  if (editor) editor.style.background = color;
+  renderNotePagesList();
+  scheduleNoteSave();
+}
+
+function toggleNotePin(id) {
+  const n = (db.notes||[]).find(x => x.id === id);
+  if (n) { n.pinned = !n.pinned; n.updatedAt = Date.now(); }
+  renderNotePagesList();
+  scheduleNoteSave();
+}
+
+function onNoteInput() {
+  if (!_currentNoteId) return;
+  const n = (db.notes||[]).find(x => x.id === _currentNoteId);
+  if (n) { n.content = document.getElementById('noteEditor')?.innerHTML || ''; n.updatedAt = Date.now(); }
+  renderNotePagesList();
+  scheduleNoteSave();
+}
+
+function onNoteKeydown(e) {
+  // Ctrl/Cmd+S — manual save
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    saveNotesNow();
+  }
+}
+
+function scheduleNoteSave() {
+  clearTimeout(_noteSaveTimer);
+  document.getElementById('noteAutoSaveMsg').textContent = '…saving';
+  _noteSaveTimer = setTimeout(saveNotesNow, 1200);
+}
+
+function saveNotesNow() {
+  clearTimeout(_noteSaveTimer);
+  saveDB();
+  const msg = document.getElementById('noteAutoSaveMsg');
+  if (msg) { msg.textContent = '✓ Saved'; setTimeout(() => { if (msg) msg.textContent = ''; }, 2000); }
+}
+
+// Editor commands
+function noteCmd(cmd, val) {
+  document.getElementById('noteEditor')?.focus();
+  document.execCommand(cmd, false, val || null);
+}
+function noteFormatBlock(tag) {
+  document.getElementById('noteEditor')?.focus();
+  document.execCommand('formatBlock', false, tag);
+}
+function noteInsertHr() {
+  document.getElementById('noteEditor')?.focus();
+  document.execCommand('insertHTML', false, '<hr>');
+}
+function noteInsertDate() {
+  document.getElementById('noteEditor')?.focus();
+  const d = new Date().toLocaleDateString('en-SG', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+  document.execCommand('insertHTML', false, `<span style="color:var(--gold);font-weight:600;">${d}</span>`);
+}
 // ═══════════════════════════════════════════
 //  LEG DRIVERS — multi-driver per arrival/departure/activity
 // ═══════════════════════════════════════════
@@ -3279,12 +3548,26 @@ function renderActSchedule() {
       ).filter(Boolean);
       const attending = [spouseAtt&&g.spouse&&g.spouse!=='-'?g.spouse:'', ...addlAtt].filter(Boolean).join(', ');
       const actChapName = g.act_chaperone_id ? chapName(g.act_chaperone_id) : '';
-      const actDrvName  = g.act_driver_id    ? drvName(g.act_driver_id)    : '';
+      // Use act_drivers array, fall back to legacy act_driver_id
+      const actDrivers = g.act_drivers?.length ? g.act_drivers
+        : (g.act_driver_id ? [{driver_id: g.act_driver_id, plate: g.act_plate||'', car: g.act_car||'', color: g.act_color||''}] : []);
       const extraCars   = g.extraCars || [];
-      const extraCell   = extraCars.length ? extraCars.map(c => {
-        const dn = c.driver_id ? drvName(c.driver_id) : '';
-        return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:0.7rem;background:rgba(200,149,42,0.1);border:1px solid rgba(200,149,42,0.3);border-radius:4px;padding:1px 6px;">🚗 ${esc(dn||c.plate||'?')}${c.plate?' · '+esc(c.plate):''}${c.remark?' ('+esc(c.remark)+')':''}</span>`;
-      }).join(' ') : '—';
+
+      // Driver cell — all act drivers + extra cars merged, matching arrivals/departures style
+      const driverCell = (() => {
+        const allD = [
+          ...actDrivers.map(d => ({ driver_id: d.driver_id, plate: d.plate, extra: false })),
+          ...extraCars.map(c => ({ driver_id: c.driver_id, plate: c.plate, remark: c.remark, extra: true }))
+        ];
+        if (!allD.length) return '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;white-space:nowrap;">🚗 ?</span>';
+        return allD.map(d => {
+          const name = d.driver_id ? drvName(d.driver_id) : '';
+          const plateStr = d.plate ? ` <span style="color:var(--slate-light);font-size:0.72rem;">· ${esc(d.plate)}</span>` : '';
+          const remarkStr = d.extra && d.remark ? ` <span style="font-size:0.65rem;color:var(--gold);background:rgba(200,149,42,0.12);border-radius:3px;padding:0 4px;">${esc(d.remark)}</span>` : '';
+          return `<div style="white-space:nowrap;font-size:0.78rem;">${esc(name||'?')}${plateStr}${remarkStr}</div>`;
+        }).join('');
+      })();
+
       rowNum++;
       rows.push(`<tr>
         <td>${rowNum}</td>
@@ -3296,15 +3579,12 @@ function renderActSchedule() {
         <td class="td-name"><strong>${esc(g.name)}</strong></td>
         <td style="font-size:0.78rem;">${esc(attending)||'—'}</td>
         <td style="font-size:0.78rem;">${actChapName||'<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;">🤝 ?</span>'}</td>
-        <td style="font-size:0.78rem;">${actDrvName  ||'<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;">🚗 ?</span>'}</td>
-        <td style="font-size:0.78rem;white-space:nowrap;">${esc(g.act_plate)||'—'}</td>
-        <td style="font-size:0.78rem;">${esc(g.act_car)||'—'}</td>
-        <td>${extraCell}</td>
+        <td>${driverCell}</td>
         <td style="font-size:0.75rem;color:var(--slate-light);">${esc(g.act_remarks)||'—'}</td>
       </tr>`);
     });
   });
-  body.innerHTML = rows.join('') || `<tr><td colspan="14" style="text-align:center;padding:30px;color:var(--slate-light);">No activity sign-ups yet.</td></tr>`;
+  body.innerHTML = rows.join('') || `<tr><td colspan="11" style="text-align:center;padding:30px;color:var(--slate-light);">No activity sign-ups yet.</td></tr>`;
 }
 
 function navToRow(tab, id) {
@@ -6756,7 +7036,7 @@ function confirmDeleteCancel() {
 }
 
 // ── Set your team password here ──────────────
-const APP_PASSWORD = 'PYLJJ';
+const APP_PASSWORD = 'APS2026';
 // ─────────────────────────────────────────────
 
 const SESSION_KEY = 'aps2026_auth';
