@@ -2209,7 +2209,7 @@ async function _loadFromFirestore() {
     const { doc, getDoc, onSnapshot } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const docRef = doc(_firestoreDb, 'aps2026', 'maindb');
 
-    // One-time initial load
+    // One-time initial load from Firestore
     const snap = await getDoc(docRef);
     if (snap.exists()) {
       db = _fromFirestore(snap.data());
@@ -2219,34 +2219,46 @@ async function _loadFromFirestore() {
       await _doSave();
     }
 
+    // ── Merge localStorage checkinLog ─────────────────────────────────────
+    // localStorage is written synchronously on every check-in, so it always
+    // contains the latest state even if Firestore write hadn't completed yet.
+    // Merge: any key in localStorage that is newer than what Firestore returned wins.
+    try {
+      const localCheckin = JSON.parse(localStorage.getItem('aps2026_checkinlog') || '{}');
+      if (!db.checkinLog) db.checkinLog = {};
+      Object.entries(localCheckin).forEach(([k, v]) => {
+        const firestoreTime = db.checkinLog[k]?.time ? new Date(db.checkinLog[k].time).getTime() : 0;
+        const localTime     = v?.time                ? new Date(v.time).getTime()                : 0;
+        // Local wins if it's newer (or if key missing from Firestore)
+        if (localTime >= firestoreTime) db.checkinLog[k] = v;
+      });
+    } catch(e) {}
+
     // ── Real-time listener ────────────────────────────────────────────────
-    // Fires whenever ANY device writes — keeps check-in and all data in sync
     onSnapshot(docRef, (snapshot) => {
       if (!snapshot.exists()) return;
-
       const remote = _fromFirestore(snapshot.data());
 
-      // Merge strategy: take remote data fully, but preserve any LOCAL check-ins
-      // that were written in the last 3 seconds (in case our write hasn't reached
-      // Firestore yet when the snapshot fires)
-      const localRecentKeys = new Set();
-      const now = Date.now();
-      Object.entries(db.checkinLog || {}).forEach(([k, v]) => {
-        if (v?.time && (now - new Date(v.time).getTime()) < 3000) localRecentKeys.add(k);
-      });
-
+      // Preserve local check-ins that are newer than the incoming snapshot
+      const localLog = db.checkinLog || {};
       db = remote;
       migrateDB();
+      if (!db.checkinLog) db.checkinLog = {};
 
-      // Re-apply any very recent local check-ins that may not be in the snapshot yet
-      localRecentKeys.forEach(k => {
-        if (!db.checkinLog[k] && _localCheckinBuffer[k]) {
-          db.checkinLog[k] = _localCheckinBuffer[k];
-        }
+      // Re-apply any local check-in entries that are newer than what's in the snapshot
+      Object.entries(localLog).forEach(([k, v]) => {
+        const remoteTime = db.checkinLog[k]?.time ? new Date(db.checkinLog[k].time).getTime() : 0;
+        const localTime  = v?.time                ? new Date(v.time).getTime()                : 0;
+        if (localTime > remoteTime) db.checkinLog[k] = v;
+      });
+
+      // Also apply _localCheckinBuffer (very recent check-ins not yet in snapshot)
+      Object.entries(_localCheckinBuffer).forEach(([k, v]) => {
+        if (!db.checkinLog[k]) db.checkinLog[k] = v;
       });
 
       syncDerivedArrays();
-      const activeView = document.querySelector('.view.active')?.id?.replace('view-','');
+      const activeView = document.querySelector('.view.active')?.id?.replace('view-', '');
       if (activeView) _refreshView(activeView);
       showSyncIndicator('synced');
       setTimeout(() => showSyncIndicator(''), 2500);
@@ -2260,9 +2272,7 @@ async function _loadFromFirestore() {
   }
   syncDerivedArrays();
   showSyncIndicator('');
-  // Restore last active tab — default to guest-list
   const savedTab = localStorage.getItem('aps2026_active_tab') || 'guest-list';
-  // Don't restore add-guest (half-filled form would be confusing after reload)
   showView(savedTab === 'add-guest' ? 'guest-list' : savedTab);
 }
 
@@ -2319,8 +2329,11 @@ async function _doSave() {
     _lastSaveTime = Date.now();
     await setDoc(doc(_firestoreDb, 'aps2026', 'maindb'), payload);
     showSyncIndicator('saved');
-    // Also update localStorage as offline fallback
-    try { localStorage.setItem('aps2026_db', payloadStr); } catch(e) {}
+    // Update localStorage after confirmed Firestore write
+    try {
+      localStorage.setItem('aps2026_db', payloadStr);
+      localStorage.setItem('aps2026_checkinlog', JSON.stringify(db.checkinLog || {}));
+    } catch(e) {}
   } catch(e) {
     console.error('Firestore save failed:', e.code, e.message);
     showSyncIndicator('error');
@@ -4849,13 +4862,13 @@ function renderMeals() {
       return `<td class="meal-check" style="opacity:0.15;"><span class="check-no">○</span></td>`;
     }).join('');
 
-    rows.push(`<tr style="background:rgba(45,122,79,0.04);">
-      <td colspan="1" style="text-align:center;color:var(--green);font-weight:700;font-size:0.72rem;">H</td>
-      <td style="font-size:0.8rem;padding-left:12px;font-weight:600;color:var(--green);">
+    rows.push(`<tr style="background:rgba(124,58,237,0.04);">
+      <td colspan="1" style="text-align:center;color:#7c3aed;font-weight:700;font-size:0.72rem;">H</td>
+      <td style="font-size:0.8rem;padding-left:12px;font-weight:600;color:#7c3aed;">
         ${esc(name)}<span style="font-size:0.65rem;color:var(--slate-light);font-weight:400;margin-left:6px;">${esc(role)}</span>
       </td>
-      <td style="background:rgba(45,122,79,0.04);">
-        <span style="background:var(--green);color:white;font-size:0.62rem;font-weight:700;padding:2px 6px;border-radius:4px;">HOST</span>
+      <td style="background:rgba(124,58,237,0.08);">
+        <span style="background:#7c3aed;color:white;font-size:0.62rem;font-weight:700;padding:2px 6px;border-radius:4px;">HOST</span>
       </td>
       ${cells}
     </tr>`);
@@ -4893,7 +4906,7 @@ function renderMeals() {
             <div style="font-size:1.4rem;font-weight:700;font-family:'Playfair Display',serif;color:var(--gold-light);">${mealTotals[mi]}</div>
             <div style="font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;opacity:0.8;margin-top:2px;">${esc(m.name)}</div>
             <div style="font-size:0.65rem;opacity:0.55;">${fmtDate(m.date)}</div>
-            ${hostCount > 0 ? `<div style="font-size:0.62rem;color:var(--green);margin-top:3px;opacity:0.9;">+${hostCount} host${hostCount!==1?'s':''}</div>` : ''}
+            ${hostCount > 0 ? `<div style="font-size:0.62rem;color:#7c3aed;margin-top:3px;opacity:0.9;">+${hostCount} host${hostCount!==1?'s':''}</div>` : ''}
           </div>`;
         }).join('')
       : '<div style="font-size:0.82rem;color:var(--slate-light);">No meal events yet.</div>';
@@ -6000,10 +6013,19 @@ function doCheckin(sessionKey, personKeyOrGuestId, type, idx) {
     const entry = { time: new Date().toISOString(), by: 'staff' };
     db.checkinLog[k] = entry;
     _localCheckinBuffer[k] = entry;
-    // Clear from buffer after 10s (well past any snapshot delay)
     setTimeout(() => { delete _localCheckinBuffer[k]; }, 10000);
   }
-  // Save immediately — no debounce for check-in
+
+  // ── Persist to localStorage SYNCHRONOUSLY before anything async ──────────
+  // This ensures check-in survives even if the page is refreshed before
+  // the async Firestore write completes
+  try {
+    const snapshot = JSON.parse(JSON.stringify(db));
+    localStorage.setItem('aps2026_db', JSON.stringify(snapshot));
+    localStorage.setItem('aps2026_checkinlog', JSON.stringify(db.checkinLog));
+  } catch(e) {}
+
+  // Save to Firestore immediately (no debounce)
   clearTimeout(_saveTimer);
   _doSave();
   renderCheckin();
@@ -6056,8 +6078,20 @@ function populateCheckinSessions() {
 
 // ── Helper: get registered people for a session key ─────────────────────────
 function getRegisteredForSession(sessionKey) {
-  // For general arrival: everyone
-  if (sessionKey === '__arrival__') return null; // null = everyone
+  const registered = new Set();
+
+  // For general arrival: all guests/spouses/addl — but NOT hosts or companions
+  if (sessionKey === '__arrival__') {
+    db.guests.forEach(g => {
+      registered.add(`${g.id}|guest|0`);
+      const hasSpouse = g.spouse && g.spouse !== '-' && g.spouse !== '0' && g.spouse.trim();
+      if (hasSpouse) registered.add(`${g.id}|spouse|0`);
+      (g.additionalGuests||[]).forEach((ag, pi) => {
+        if (ag.name && ag.name.trim()) registered.add(`${g.id}|addl|${pi}`);
+      });
+    });
+    return registered;
+  }
 
   // Find the event index from "ev_N" key
   const evMatch = sessionKey.match(/^ev_(\d+)$/);
@@ -6067,7 +6101,7 @@ function getRegisteredForSession(sessionKey) {
   if (!ev) return null;
 
   const evType = ev.type;
-  const registered = new Set(); // "guestId|type|idx"
+  registered.clear(); // reset for this event type
 
   if (evType === 'Meal') {
     const mealIdx = db.mealEvents.findIndex(m =>
@@ -6106,7 +6140,16 @@ function getRegisteredForSession(sessionKey) {
     // Include activity companions
     getCompanionsForActivity(actIdx).forEach((c, ci) => registered.add(companionKey(actIdx, ci)));
   } else {
-    return null; // sessions, devotions, etc. → show everyone
+    // Sessions, Devotions, Services etc. — show all guests but NOT hosts or companions
+    // Hosts belong to specific meals only; companions to specific activities
+    db.guests.forEach(g => {
+      registered.add(`${g.id}|guest|0`);
+      const hasSpouse = g.spouse && g.spouse !== '-' && g.spouse !== '0' && g.spouse.trim();
+      if (hasSpouse) registered.add(`${g.id}|spouse|0`);
+      (g.additionalGuests||[]).forEach((ag, pi) => {
+        if (ag.name && ag.name.trim()) registered.add(`${g.id}|addl|${pi}`);
+      });
+    });
   }
   return registered;
 }
@@ -6159,15 +6202,9 @@ function renderCheckin() {
     });
   });
 
-  // Separate: expected (on registered list) vs all others (walk-in candidates)
-  // For general arrival, exclude hosts (they're not arriving guests)
-  const isGeneralArrival = sessionKey === '__arrival__';
-  const expectedPeople = registered
-    ? allPeople.filter(p => registered.has(p.key || `${p.guestId}|${p.type}|${p.idx}`))
-    : allPeople.filter(p => !(isGeneralArrival && (p.role === 'HOST' || p.role === 'COMPANION')));
-  const walkinCandidates = registered
-    ? allPeople.filter(p => !registered.has(p.key || `${p.guestId}|${p.type}|${p.idx}`))
-    : [];
+  // Separate: expected (on registered list) vs walk-in candidates
+  const expectedPeople    = allPeople.filter(p => registered.has(p.key || `${p.guestId}|${p.type}|${p.idx}`));
+  const walkinCandidates  = allPeople.filter(p => !registered.has(p.key || `${p.guestId}|${p.type}|${p.idx}`));
 
   // Walk-ins already checked in (from log)
   const walkinKeys = Object.keys(db.checkinLog||{}).filter(k => {
@@ -6291,12 +6328,12 @@ function checkinCard(p, sessionKey, isWalkin) {
     : `<span style="font-size:0.85rem;font-weight:700;">${initials(p.name)}</span>`;
   const isHost       = p.role === 'HOST';
   const isCompanion  = p.role === 'COMPANION';
-  const pillColor = isWalkin ? '#7c3aed' : isHost ? 'var(--green)' : isCompanion ? '#0891b2' : p.role==='GUEST' ? 'var(--navy)' : p.role==='SPOUSE' ? 'var(--gold)' : 'var(--blue)';
+  const pillColor = isWalkin ? '#7c3aed' : isHost ? '#7c3aed' : isCompanion ? '#0891b2' : p.role==='GUEST' ? 'var(--navy)' : p.role==='SPOUSE' ? 'var(--gold)' : 'var(--blue)';
   const pillLabel = isWalkin ? 'WALK-IN' : p.role;
-  const cardBg    = isWalkin ? (checkedIn ? '#f5f0ff' : '#faf7ff') : isHost ? 'rgba(45,122,79,0.04)' : isCompanion ? 'rgba(8,145,178,0.04)' : '';
+  const cardBg    = isWalkin ? (checkedIn ? '#f5f0ff' : '#faf7ff') : isHost ? 'rgba(124,58,237,0.04)' : isCompanion ? 'rgba(8,145,178,0.04)' : '';
 
   return `<div class="checkin-card ${checkedIn ? 'checked-in' : ''}" style="${cardBg?'background:'+cardBg+';':''}${isWalkin?'border-color:rgba(124,58,237,0.3);':''}">
-    <div class="checkin-avatar ${p.avatarClass}" style="${isWalkin?'background:linear-gradient(135deg,#7c3aed,#4c1d95);':isHost?'background:linear-gradient(135deg,var(--green),#1a5c32);':isCompanion?'background:linear-gradient(135deg,#0891b2,#0e7490);':''}">${av}</div>
+    <div class="checkin-avatar ${p.avatarClass}" style="${isWalkin?'background:linear-gradient(135deg,#7c3aed,#4c1d95);':isHost?'background:linear-gradient(135deg,#7c3aed,#4c1d95);':isCompanion?'background:linear-gradient(135deg,#0891b2,#0e7490);':''}">${av}</div>
     <div style="flex:1;min-width:0;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <div class="checkin-name">${esc(p.name)}</div>
@@ -6307,7 +6344,7 @@ function checkinCard(p, sessionKey, isWalkin) {
       ${checkedIn && timeStr ? `<div class="checkin-time">✓ ${isWalkin?'Walk-in':''} Checked in at ${timeStr} · ${dateStr}</div>` : ''}
     </div>
     <button class="checkin-btn ${checkedIn ? 'btn-undo' : 'btn-checkin'}"
-      style="${isWalkin&&!checkedIn?'background:#7c3aed;':isHost&&!checkedIn?'background:var(--green);':isCompanion&&!checkedIn?'background:#0891b2;':''}"
+      style="${isWalkin&&!checkedIn?'background:#7c3aed;':isHost&&!checkedIn?'background:#7c3aed;':isCompanion&&!checkedIn?'background:#0891b2;':''}"
       onclick="doCheckin('${sessionKey}','${pKey}')">
       ${checkedIn ? '↩ Undo' : isWalkin ? '🚶 Check In' : '✓ Check In'}
     </button>
@@ -7264,6 +7301,15 @@ async function initFirebase() {
   }
 })();
 }
+
+// Flush current state to localStorage on page close/refresh
+// This ensures check-ins are never lost even if Firestore write is in-flight
+window.addEventListener('beforeunload', () => {
+  try {
+    localStorage.setItem('aps2026_db', JSON.stringify(db));
+    localStorage.setItem('aps2026_checkinlog', JSON.stringify(db.checkinLog || {}));
+  } catch(e) {}
+});
 
 // Resize handler — keep seating SVG height responsive
 window.addEventListener('resize', () => {
