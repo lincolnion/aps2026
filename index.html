@@ -2220,22 +2220,36 @@ async function _loadFromFirestore() {
     }
 
     // ── Real-time listener ────────────────────────────────────────────────
-    // Fires whenever ANY device writes to Firestore — keeps all tabs in sync
+    // Fires whenever ANY device writes — keeps check-in and all data in sync
     onSnapshot(docRef, (snapshot) => {
       if (!snapshot.exists()) return;
-      // Ignore if we triggered this write ourselves (within 2s of last save)
-      const timeSinceLastSave = Date.now() - (_lastSaveTime || 0);
-      if (timeSinceLastSave < 2000) return;
-      // Merge remote data in
+
       const remote = _fromFirestore(snapshot.data());
+
+      // Merge strategy: take remote data fully, but preserve any LOCAL check-ins
+      // that were written in the last 3 seconds (in case our write hasn't reached
+      // Firestore yet when the snapshot fires)
+      const localRecentKeys = new Set();
+      const now = Date.now();
+      Object.entries(db.checkinLog || {}).forEach(([k, v]) => {
+        if (v?.time && (now - new Date(v.time).getTime()) < 3000) localRecentKeys.add(k);
+      });
+
       db = remote;
       migrateDB();
+
+      // Re-apply any very recent local check-ins that may not be in the snapshot yet
+      localRecentKeys.forEach(k => {
+        if (!db.checkinLog[k] && _localCheckinBuffer[k]) {
+          db.checkinLog[k] = _localCheckinBuffer[k];
+        }
+      });
+
       syncDerivedArrays();
-      // Re-render current active view
       const activeView = document.querySelector('.view.active')?.id?.replace('view-','');
       if (activeView) _refreshView(activeView);
       showSyncIndicator('synced');
-      setTimeout(() => showSyncIndicator(''), 2000);
+      setTimeout(() => showSyncIndicator(''), 2500);
     }, (err) => {
       console.warn('Firestore snapshot error:', err);
     });
@@ -2253,6 +2267,7 @@ async function _loadFromFirestore() {
 }
 
 let _lastSaveTime = 0;
+const _localCheckinBuffer = {}; // tracks recent local check-ins for merge protection
 
 // Re-render whichever view is currently open
 function _refreshView(viewName) {
@@ -5978,9 +5993,19 @@ function getCheckinTime(sessionKey, personKeyOrGuestId, type, idx) {
 function doCheckin(sessionKey, personKeyOrGuestId, type, idx) {
   if (!db.checkinLog) db.checkinLog = {};
   const k = checkinKey(sessionKey, personKeyOrGuestId, type, idx);
-  if (db.checkinLog[k]) delete db.checkinLog[k];
-  else db.checkinLog[k] = { time: new Date().toISOString(), by: 'staff' };
-  saveDB();
+  if (db.checkinLog[k]) {
+    delete db.checkinLog[k];
+    delete _localCheckinBuffer[k];
+  } else {
+    const entry = { time: new Date().toISOString(), by: 'staff' };
+    db.checkinLog[k] = entry;
+    _localCheckinBuffer[k] = entry;
+    // Clear from buffer after 10s (well past any snapshot delay)
+    setTimeout(() => { delete _localCheckinBuffer[k]; }, 10000);
+  }
+  // Save immediately — no debounce for check-in
+  clearTimeout(_saveTimer);
+  _doSave();
   renderCheckin();
 }
 
