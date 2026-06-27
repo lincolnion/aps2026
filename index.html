@@ -1632,6 +1632,12 @@
           <option value="__arrival__">✈️ Arrival / General Check-In</option>
         </select>
         <div style="font-size:0.72rem;color:var(--slate-light);" id="checkinSessionInfo"></div>
+        <!-- Manual save button -->
+        <button id="checkinSaveBtn" onclick="checkinForceSave()"
+          style="display:none;background:var(--slate);color:white;border:none;border-radius:8px;padding:8px 18px;font-size:0.82rem;font-weight:700;cursor:pointer;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+          ☁ Save Check-In
+        </button>
+        <div id="checkinSyncStatus" style="font-size:0.72rem;font-weight:600;"></div>
       </div>
     </div>
 
@@ -1647,7 +1653,11 @@
         <option value="in">✅ Arrived</option>
         <option value="walkin">🚶 Walk-ins Only</option>
       </select>
-      <button class="btn btn-danger btn-sm" onclick="resetCheckin()" style="margin-left:auto;">🔄 Reset Check-In</button>
+      <button id="checkinSaveBtn" onclick="checkinForceSave()"
+        style="margin-left:auto;background:var(--gold);color:white;border:none;border-radius:8px;padding:8px 20px;font-size:0.84rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
+        ☁ Save
+      </button>
+      <span id="checkinSyncStatus" style="font-size:0.72rem;font-weight:600;"></span>
     </div>
 
     <!-- Expected guest list -->
@@ -2206,11 +2216,8 @@ function loadDB() {
 
 async function _loadFromFirestore() {
   try {
-    const { doc, getDoc, onSnapshot } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const docRef = doc(_firestoreDb, 'aps2026', 'maindb');
-
-    // One-time initial load from Firestore
-    const snap = await getDoc(docRef);
+    const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDoc(doc(_firestoreDb, 'aps2026', 'maindb'));
     if (snap.exists()) {
       db = _fromFirestore(snap.data());
       migrateDB();
@@ -2218,56 +2225,8 @@ async function _loadFromFirestore() {
       seedData();
       await _doSave();
     }
-
-    // ── Merge localStorage checkinLog ─────────────────────────────────────
-    // localStorage is written synchronously on every check-in, so it always
-    // contains the latest state even if Firestore write hadn't completed yet.
-    // Merge: any key in localStorage that is newer than what Firestore returned wins.
-    try {
-      const localCheckin = JSON.parse(localStorage.getItem('aps2026_checkinlog') || '{}');
-      if (!db.checkinLog) db.checkinLog = {};
-      Object.entries(localCheckin).forEach(([k, v]) => {
-        const firestoreTime = db.checkinLog[k]?.time ? new Date(db.checkinLog[k].time).getTime() : 0;
-        const localTime     = v?.time                ? new Date(v.time).getTime()                : 0;
-        // Local wins if it's newer (or if key missing from Firestore)
-        if (localTime >= firestoreTime) db.checkinLog[k] = v;
-      });
-    } catch(e) {}
-
-    // ── Real-time listener ────────────────────────────────────────────────
-    onSnapshot(docRef, (snapshot) => {
-      if (!snapshot.exists()) return;
-      const remote = _fromFirestore(snapshot.data());
-
-      // Preserve local check-ins that are newer than the incoming snapshot
-      const localLog = db.checkinLog || {};
-      db = remote;
-      migrateDB();
-      if (!db.checkinLog) db.checkinLog = {};
-
-      // Re-apply any local check-in entries that are newer than what's in the snapshot
-      Object.entries(localLog).forEach(([k, v]) => {
-        const remoteTime = db.checkinLog[k]?.time ? new Date(db.checkinLog[k].time).getTime() : 0;
-        const localTime  = v?.time                ? new Date(v.time).getTime()                : 0;
-        if (localTime > remoteTime) db.checkinLog[k] = v;
-      });
-
-      // Also apply _localCheckinBuffer (very recent check-ins not yet in snapshot)
-      Object.entries(_localCheckinBuffer).forEach(([k, v]) => {
-        if (!db.checkinLog[k]) db.checkinLog[k] = v;
-      });
-
-      syncDerivedArrays();
-      const activeView = document.querySelector('.view.active')?.id?.replace('view-', '');
-      if (activeView) _refreshView(activeView);
-      showSyncIndicator('synced');
-      setTimeout(() => showSyncIndicator(''), 2500);
-    }, (err) => {
-      console.warn('Firestore snapshot error:', err);
-    });
-
   } catch(e) {
-    console.warn('Firestore load failed, using localStorage fallback:', e);
+    console.warn('Firestore load failed, using localStorage:', e);
     _loadLocalFallback();
   }
   syncDerivedArrays();
@@ -2309,8 +2268,11 @@ function _loadLocalFallback() {
 }
 
 function saveDB() {
+  // Write localStorage as offline fallback
+  try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
+  // Debounce Firestore write 800ms
   clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(_doSave, 600);
+  _saveTimer = setTimeout(_doSave, 800);
 }
 
 async function _doSave() {
@@ -2318,33 +2280,13 @@ async function _doSave() {
   try {
     const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const payload = _toFirestore(db);
-
-    // iPad/Safari guard: check payload size before writing
-    // Firestore document limit is 1MB; warn at 800KB
-    const payloadStr = JSON.stringify(payload);
-    if (payloadStr.length > 800000) {
-      console.warn('Payload large:', Math.round(payloadStr.length/1024) + 'KB — trimming old notes content');
-    }
-
-    _lastSaveTime = Date.now();
+    if (JSON.stringify(payload).length > 800000) console.warn('Payload large');
     await setDoc(doc(_firestoreDb, 'aps2026', 'maindb'), payload);
     showSyncIndicator('saved');
-    // Update localStorage after confirmed Firestore write
-    try {
-      localStorage.setItem('aps2026_db', payloadStr);
-      localStorage.setItem('aps2026_checkinlog', JSON.stringify(db.checkinLog || {}));
-    } catch(e) {}
+    _setCheckinSyncStatus('saved');
   } catch(e) {
     console.error('Firestore save failed:', e.code, e.message);
     showSyncIndicator('error');
-    // Show user-visible error for iPad debugging
-    if (e.code === 'permission-denied') {
-      showToast('⚠ Save failed: Permission denied. Check Firestore rules.', 'error');
-    } else if (e.code === 'unavailable' || e.message?.includes('network')) {
-      showToast('⚠ Offline — changes saved locally, will sync when online.', '');
-    } else {
-      showToast(`⚠ Save error: ${e.message||e.code||'Unknown'}`, 'error');
-    }
   }
 }
 
@@ -6003,32 +5945,76 @@ function getCheckinTime(sessionKey, personKeyOrGuestId, type, idx) {
   return (db.checkinLog || {})[k]?.time || null;
 }
 
-function doCheckin(sessionKey, personKeyOrGuestId, type, idx) {
+let _checkinUnsaved = false;
+
+function _setCheckinSyncStatus(state) {
+  const btn    = document.getElementById('checkinSaveBtn');
+  const status = document.getElementById('checkinSyncStatus');
+  if (state === 'saving') {
+    _checkinUnsaved = true;
+    if (btn)    { btn.style.display = 'flex'; btn.disabled = true; btn.textContent = '⏳ Saving…'; btn.style.background = '#718096'; }
+    if (status) { status.textContent = '⏳ Saving to cloud…'; status.style.color = 'var(--slate-light)'; }
+  } else if (state === 'saved') {
+    _checkinUnsaved = false;
+    if (btn)    { btn.style.display = 'none'; }
+    if (status) { status.textContent = '✓ Saved to cloud'; status.style.color = 'var(--green)';
+      setTimeout(() => { if (status) status.textContent = ''; }, 3000); }
+  } else if (state === 'error') {
+    _checkinUnsaved = true;
+    if (btn)    { btn.style.display = 'flex'; btn.disabled = false; btn.textContent = '☁ Retry Save'; btn.style.background = 'var(--red)'; }
+    if (status) { status.textContent = '⚠ Save failed — tap Retry'; status.style.color = 'var(--red)'; }
+  }
+}
+
+async function checkinForceSave() {
+  const btn    = document.getElementById('checkinSaveBtn');
+  const status = document.getElementById('checkinSyncStatus');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; btn.style.background = '#718096'; }
+
+  try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
+
+  try {
+    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const payload = _toFirestore(db);
+    await setDoc(doc(_firestoreDb, 'aps2026', 'maindb'), payload);
+    if (btn)    { btn.disabled = false; btn.textContent = '✓ Saved'; btn.style.background = 'var(--green)'; }
+    if (status) { status.textContent = 'Saved — safe to refresh'; status.style.color = 'var(--green)'; }
+    setTimeout(() => {
+      if (btn)    { btn.textContent = '☁ Save'; btn.style.background = 'var(--gold)'; }
+      if (status)   status.textContent = '';
+    }, 3000);
+  } catch(e) {
+    if (btn)    { btn.disabled = false; btn.textContent = '⚠ Retry'; btn.style.background = 'var(--red)'; }
+    if (status) { status.textContent = 'Save failed'; status.style.color = 'var(--red)'; }
+  }
+}
+
+async function doCheckin(sessionKey, personKeyOrGuestId, type, idx) {
   if (!db.checkinLog) db.checkinLog = {};
   const k = checkinKey(sessionKey, personKeyOrGuestId, type, idx);
   if (db.checkinLog[k]) {
     delete db.checkinLog[k];
-    delete _localCheckinBuffer[k];
   } else {
-    const entry = { time: new Date().toISOString(), by: 'staff' };
-    db.checkinLog[k] = entry;
-    _localCheckinBuffer[k] = entry;
-    setTimeout(() => { delete _localCheckinBuffer[k]; }, 10000);
+    db.checkinLog[k] = { time: new Date().toISOString(), by: 'staff' };
   }
 
-  // ── Persist to localStorage SYNCHRONOUSLY before anything async ──────────
-  // This ensures check-in survives even if the page is refreshed before
-  // the async Firestore write completes
-  try {
-    const snapshot = JSON.parse(JSON.stringify(db));
-    localStorage.setItem('aps2026_db', JSON.stringify(snapshot));
-    localStorage.setItem('aps2026_checkinlog', JSON.stringify(db.checkinLog));
-  } catch(e) {}
+  // Write localStorage immediately as backup
+  try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
 
-  // Save to Firestore immediately (no debounce)
-  clearTimeout(_saveTimer);
-  _doSave();
   renderCheckin();
+
+  // Save directly to Firestore NOW — no debounce, no buffer
+  // This is why the ☁ Save button exists: to confirm Firestore write completed
+  if (!_firestoreDb) return;
+  try {
+    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const payload = _toFirestore(db);
+    await setDoc(doc(_firestoreDb, 'aps2026', 'maindb'), payload);
+    _setCheckinSyncStatus('saved');
+  } catch(e) {
+    console.error('doCheckin save failed:', e);
+    _setCheckinSyncStatus('error');
+  }
 }
 
 function resetCheckin() {
@@ -7302,13 +7288,19 @@ async function initFirebase() {
 })();
 }
 
-// Flush current state to localStorage on page close/refresh
-// This ensures check-ins are never lost even if Firestore write is in-flight
-window.addEventListener('beforeunload', () => {
+// Warn if leaving with unsaved check-ins
+window.addEventListener('beforeunload', (e) => {
+  // Always flush to localStorage on any unload
   try {
     localStorage.setItem('aps2026_db', JSON.stringify(db));
     localStorage.setItem('aps2026_checkinlog', JSON.stringify(db.checkinLog || {}));
-  } catch(e) {}
+  } catch(err) {}
+  // Show browser warning if check-in is unsaved
+  if (_checkinUnsaved) {
+    e.preventDefault();
+    e.returnValue = 'Check-in has not been saved to cloud yet. Click "Save Check-In" first, then refresh.';
+    return e.returnValue;
+  }
 });
 
 // Resize handler — keep seating SVG height responsive
