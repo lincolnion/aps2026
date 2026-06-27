@@ -644,6 +644,16 @@
   #noteEditor hr { border:none;border-top:1px solid var(--border);margin:14px 0; }
   #noteEditor p { margin:4px 0; }
 
+  /* ── Seating planner responsive ── */
+  @media (max-width: 700px) {
+    #seatingLayout { flex-direction: column !important; }
+    #seatingGuestPanel { width: 100% !important; min-width: unset !important; }
+    #seatingGuestList  { max-height: 180px !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 4px !important; }
+  }
+  @media (max-width: 900px) {
+    #seatingGuestPanel { width: 160px !important; }
+  }
+
   tr.row-highlight td {
     background: rgba(200,149,42,0.18) !important;
     transition: background 0.3s;
@@ -1467,7 +1477,7 @@
     </div>
     <div class="table-wrapper">
       <table>
-        <thead><tr><th style="width:28px;"></th><th>#</th><th>Name</th><th>Contact No.</th><th>Remark</th><th>Assigned Guests</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th style="width:28px;"></th><th>#</th><th>Name</th><th>Contact No.</th><th>Remark</th><th>Assigned Guests</th><th>Tagged Drivers</th><th>Status</th><th></th></tr></thead>
         <tbody id="chaperoneBody"></tbody>
       </table>
     </div>
@@ -1484,7 +1494,7 @@
     </div>
     <div class="table-wrapper">
       <table>
-        <thead><tr><th style="width:28px;"></th><th>#</th><th>Name</th><th>Contact</th><th>Car Plate</th><th>Brand / Model</th><th>Colour</th><th>Remark</th><th>Assigned Guests</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th style="width:28px;"></th><th>#</th><th>Name</th><th>Contact</th><th>Car Plate</th><th>Brand / Model</th><th>Colour</th><th>Remark</th><th>Assigned Guests</th><th>Tagged Chaperone</th><th>Status</th><th></th></tr></thead>
         <tbody id="driverBody"></tbody>
       </table>
     </div>
@@ -1548,28 +1558,29 @@
   <div class="view" id="view-seating">
 
     <!-- Top toolbar -->
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
       <div>
         <div class="section-title" style="margin-bottom:2px;">🪑 Seating Planner</div>
-        <div class="section-desc" style="margin-bottom:0;">Drag tables to position them. Click a chair to assign a guest.</div>
+        <div class="section-desc" style="margin-bottom:0;">Drag tables to position them. Tap a chair to assign a guest.</div>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <select id="seatingMealSel" onchange="loadSeatingPlan()" style="padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:0.84rem;font-family:Inter,sans-serif;min-width:200px;">
+        <select id="seatingMealSel" onchange="loadSeatingPlan()" style="padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:0.84rem;font-family:Inter,sans-serif;min-width:180px;max-width:260px;">
           <option value="">— Select Meal —</option>
         </select>
-        <button class="btn btn-outline btn-sm" onclick="addTable('round')">+ Round Table</button>
-        <button class="btn btn-outline btn-sm" onclick="addTable('rect')">+ Rect Table</button>
-        <button class="btn btn-gold btn-sm" onclick="saveSeatingPlan()">💾 Save Plan</button>
+        <button class="btn btn-outline btn-sm" onclick="addTable('round')">+ Round</button>
+        <button class="btn btn-outline btn-sm" onclick="addTable('rect')">+ Rect</button>
+        <button class="btn btn-gold btn-sm" onclick="saveSeatingPlan()">💾 Save</button>
         <button class="btn btn-outline btn-sm" onclick="clearSeatingPlan()">🗑 Clear</button>
       </div>
     </div>
 
-    <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+    <!-- Responsive layout: stacks on mobile, side-by-side on desktop -->
+    <div id="seatingLayout" style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
 
-      <!-- SVG Floor plan -->
-      <div style="flex:1;min-width:320px;position:relative;">
-        <svg id="seatingCanvas" width="100%" height="620"
-          style="background:#f5f0e8;border:2px solid var(--border);border-radius:12px;cursor:default;display:block;"
+      <!-- SVG Floor plan — fills available width, height scales with viewport -->
+      <div style="flex:1;min-width:280px;position:relative;">
+        <svg id="seatingCanvas" width="100%"
+          style="background:#f5f0e8;border:2px solid var(--border);border-radius:12px;cursor:default;display:block;touch-action:none;"
           xmlns="http://www.w3.org/2000/svg">
           <defs>
             <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -1582,7 +1593,7 @@
           <g id="seatingTablesGroup"></g>
         </svg>
         <!-- Guest assignment picker overlay -->
-        <div id="seatPickerOverlay" style="display:none;position:absolute;z-index:100;background:white;border:2px solid var(--gold);border-radius:10px;padding:14px;box-shadow:0 8px 24px rgba(0,0,0,0.18);min-width:230px;">
+        <div id="seatPickerOverlay" style="display:none;position:absolute;z-index:100;background:white;border:2px solid var(--gold);border-radius:10px;padding:14px;box-shadow:0 8px 24px rgba(0,0,0,0.18);min-width:230px;max-width:90vw;">
           <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gold);margin-bottom:8px;" id="seatPickerTitle">Assign Seat</div>
           <select id="seatPickerSel" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;font-family:Inter,sans-serif;margin-bottom:10px;">
             <option value="">— Select guest —</option>
@@ -1594,20 +1605,18 @@
         </div>
       </div>
 
-      <!-- Unassigned guest panel -->
-      <div style="width:220px;flex-shrink:0;">
+      <!-- Unassigned guest panel — collapses on mobile -->
+      <div id="seatingGuestPanel" style="width:200px;flex-shrink:0;min-width:160px;">
         <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gold);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--border);">
           Unassigned Guests
         </div>
         <div style="font-size:0.72rem;color:var(--slate-light);margin-bottom:8px;" id="seatingUnassignedCount"></div>
-        <div id="seatingGuestList" style="display:flex;flex-direction:column;gap:5px;max-height:530px;overflow-y:auto;"></div>
+        <div id="seatingGuestList" style="display:flex;flex-direction:column;gap:5px;max-height:480px;overflow-y:auto;"></div>
       </div>
     </div>
 
-    <!-- All-tables summary (always visible when tables exist) -->
+    <!-- All-tables summary -->
     <div id="seatingTableDetail" style="margin-top:18px;"></div>
-
-  </div>
 
 </main>
   <div class="view" id="view-checkin">
@@ -2197,8 +2206,11 @@ function loadDB() {
 
 async function _loadFromFirestore() {
   try {
-    const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const snap = await getDoc(doc(_firestoreDb, 'aps2026', 'maindb'));
+    const { doc, getDoc, onSnapshot } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const docRef = doc(_firestoreDb, 'aps2026', 'maindb');
+
+    // One-time initial load
+    const snap = await getDoc(docRef);
     if (snap.exists()) {
       db = _fromFirestore(snap.data());
       migrateDB();
@@ -2206,13 +2218,61 @@ async function _loadFromFirestore() {
       seedData();
       await _doSave();
     }
+
+    // ── Real-time listener ────────────────────────────────────────────────
+    // Fires whenever ANY device writes to Firestore — keeps all tabs in sync
+    onSnapshot(docRef, (snapshot) => {
+      if (!snapshot.exists()) return;
+      // Ignore if we triggered this write ourselves (within 2s of last save)
+      const timeSinceLastSave = Date.now() - (_lastSaveTime || 0);
+      if (timeSinceLastSave < 2000) return;
+      // Merge remote data in
+      const remote = _fromFirestore(snapshot.data());
+      db = remote;
+      migrateDB();
+      syncDerivedArrays();
+      // Re-render current active view
+      const activeView = document.querySelector('.view.active')?.id?.replace('view-','');
+      if (activeView) _refreshView(activeView);
+      showSyncIndicator('synced');
+      setTimeout(() => showSyncIndicator(''), 2000);
+    }, (err) => {
+      console.warn('Firestore snapshot error:', err);
+    });
+
   } catch(e) {
     console.warn('Firestore load failed, using localStorage fallback:', e);
     _loadLocalFallback();
   }
   syncDerivedArrays();
   showSyncIndicator('');
-  renderGuestList();
+  // Restore last active tab — default to guest-list
+  const savedTab = localStorage.getItem('aps2026_active_tab') || 'guest-list';
+  // Don't restore add-guest (half-filled form would be confusing after reload)
+  showView(savedTab === 'add-guest' ? 'guest-list' : savedTab);
+}
+
+let _lastSaveTime = 0;
+
+// Re-render whichever view is currently open
+function _refreshView(viewName) {
+  const fns = {
+    'guest-list':    renderGuestList,
+    'arrivals':      renderArrivals,
+    'departures':    renderDepartures,
+    'act-schedule':  renderActSchedule,
+    'meals':         renderMeals,
+    'activities':    renderActivities,
+    'events':        renderEvents,
+    'hotel':         renderHotel,
+    'chaperones':    renderChaperones,
+    'drivers':       renderDrivers,
+    'checkin':       renderCheckin,
+    'seating':       renderSeating,
+    'notes':         initNotes,
+  };
+  const fn = fns[viewName];
+  if (fn) { try { fn(); } catch(e) {} }
 }
 
 function _loadLocalFallback() {
@@ -2224,9 +2284,6 @@ function _loadLocalFallback() {
 }
 
 function saveDB() {
-  // Mirror to localStorage immediately as offline fallback
-  try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
-  // Debounce Firestore write by 600ms
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(_doSave, 600);
 }
@@ -2236,11 +2293,30 @@ async function _doSave() {
   try {
     const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const payload = _toFirestore(db);
+
+    // iPad/Safari guard: check payload size before writing
+    // Firestore document limit is 1MB; warn at 800KB
+    const payloadStr = JSON.stringify(payload);
+    if (payloadStr.length > 800000) {
+      console.warn('Payload large:', Math.round(payloadStr.length/1024) + 'KB — trimming old notes content');
+    }
+
+    _lastSaveTime = Date.now();
     await setDoc(doc(_firestoreDb, 'aps2026', 'maindb'), payload);
     showSyncIndicator('saved');
+    // Also update localStorage as offline fallback
+    try { localStorage.setItem('aps2026_db', payloadStr); } catch(e) {}
   } catch(e) {
-    console.error('Firestore save failed:', e.code, e.message, e);
+    console.error('Firestore save failed:', e.code, e.message);
     showSyncIndicator('error');
+    // Show user-visible error for iPad debugging
+    if (e.code === 'permission-denied') {
+      showToast('⚠ Save failed: Permission denied. Check Firestore rules.', 'error');
+    } else if (e.code === 'unavailable' || e.message?.includes('network')) {
+      showToast('⚠ Offline — changes saved locally, will sync when online.', '');
+    } else {
+      showToast(`⚠ Save error: ${e.message||e.code||'Unknown'}`, 'error');
+    }
   }
 }
 
@@ -2362,8 +2438,12 @@ function showSyncIndicator(state) {
   }
   clearTimeout(_syncBadgeTimer);
   if (state === 'saved') {
-    el.textContent = '✓ Saved to Google Cloud';
+    el.textContent = '✓ Saved to cloud';
     el.style.cssText += 'background:#e8f5ee;color:#2d7a4f;opacity:1;';
+    _syncBadgeTimer = setTimeout(() => { el.style.opacity='0'; }, 2500);
+  } else if (state === 'synced') {
+    el.textContent = '🔄 Synced from another device';
+    el.style.cssText += 'background:#eef2ff;color:#3b5bdb;opacity:1;';
     _syncBadgeTimer = setTimeout(() => { el.style.opacity='0'; }, 2500);
   } else if (state === 'error') {
     el.textContent = '⚠ Cloud save failed — local copy kept';
@@ -2780,21 +2860,24 @@ function showView(name) {
   const el = document.getElementById('view-' + name);
   if (el) el.classList.add('active');
   const tab = document.querySelector(`.nav-tab[data-view="${name}"]`);
-  if (tab) tab.classList.add('active');
+  if (tab) { tab.classList.add('active'); tab.scrollIntoView({ block:'nearest', inline:'center', behavior:'smooth' }); }
 
-  if (name === 'guest-list') renderGuestList();
-  if (name === 'arrivals')    renderArrivals();
-  if (name === 'departures')  renderDepartures();
+  // Persist active tab — restored on next page load
+  try { localStorage.setItem('aps2026_active_tab', name); } catch(e) {}
+
+  if (name === 'guest-list')   renderGuestList();
+  if (name === 'arrivals')     renderArrivals();
+  if (name === 'departures')   renderDepartures();
   if (name === 'act-schedule') renderActSchedule();
   if (name === 'notes')        initNotes();
-  if (name === 'meals') renderMeals();
-  if (name === 'activities') renderActivities();
-  if (name === 'events') renderEvents();
-  if (name === 'hotel') renderHotel();
-  if (name === 'chaperones') renderChaperones();
-  if (name === 'drivers') renderDrivers();
-  if (name === 'checkin') renderCheckin();
-  if (name === 'seating') renderSeating();
+  if (name === 'meals')        renderMeals();
+  if (name === 'activities')   renderActivities();
+  if (name === 'events')       renderEvents();
+  if (name === 'hotel')        renderHotel();
+  if (name === 'chaperones')   renderChaperones();
+  if (name === 'drivers')      renderDrivers();
+  if (name === 'checkin')      renderCheckin();
+  if (name === 'seating') { _setSvgHeight(); renderSeating(); }
   if (name === 'add-guest') {
     populateHotelSelect();
     populateChaperoneDriverSelects();
@@ -2804,10 +2887,14 @@ function showView(name) {
     if (!document.getElementById('editGuestId').value) {
       _currentAdditionalGuests = [];
       _currentDietaryInfo = [];
+      _currentExtraCars = [];
+      _legDrivers = { arr: [], dep: [], act: [] };
       renderAdditionalGuestsList([]);
+      renderExtraCarsList();
+      renderAllLegDriverLists();
     }
   }
-  window.scrollTo(0,0);
+  window.scrollTo(0, 0);
 }
 
 document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -5640,6 +5727,21 @@ function renderChaperones() {
       ondragleave="onRowDragLeave(event)"
       ondrop="onRowDrop(event,${c.id},'chaperone')"
       ondragend="onRowDragEnd(event,'chaperone')"` : '';
+    // Find all drivers tagged to guests that this chaperone is also assigned to
+    const taggedDriverIds = new Set();
+    db.guests.forEach(g => {
+      const isChap = g.arr_chaperone_id == c.id || g.dep_chaperone_id == c.id || g.act_chaperone_id == c.id;
+      if (!isChap) return;
+      [...(g.arr_drivers||[]),...(g.dep_drivers||[]),...(g.act_drivers||[]),...(g.extraCars||[])]
+        .forEach(d => { if (d.driver_id) taggedDriverIds.add(d.driver_id); });
+      if (g.arr_driver_id) taggedDriverIds.add(g.arr_driver_id);
+      if (g.dep_driver_id) taggedDriverIds.add(g.dep_driver_id);
+    });
+    const taggedDriverNames = [...taggedDriverIds].map(id => {
+      const d = db.drivers.find(x => x.id == id);
+      return d ? esc(d.name) : '';
+    }).filter(Boolean).join(', ') || '—';
+
     return `<tr id="chaperonerow_${c.id}" style="${dragStyle}" ${dragAttrs}>
       <td style="text-align:center;color:var(--slate-light);font-size:1rem;padding:0 6px;">${reorder ? '⠿' : ''}</td>
       <td>${i+1}</td>
@@ -5647,13 +5749,14 @@ function renderChaperones() {
       <td style="font-size:0.78rem;">${esc(c.contact)||'—'}</td>
       <td style="font-size:0.78rem;">${esc(c.remark)||'—'}</td>
       <td style="font-size:0.78rem;max-width:240px;">${assigned}</td>
+      <td style="font-size:0.78rem;color:var(--slate);">${taggedDriverNames}</td>
       <td><span style="font-size:0.72rem;font-weight:700;color:${statusColor};background:${statusBg};padding:2px 8px;border-radius:4px;">${autoStatus}</span></td>
       <td style="white-space:nowrap;">
         <button class="btn btn-outline btn-sm" onclick="editChaperone(${c.id})">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteChaperone(${c.id})">🗑</button>
       </td>
     </tr>`;
-  }).join('') || '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--slate-light);">No chaperones yet.</td></tr>';
+  }).join('') || '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--slate-light);">No chaperones yet.</td></tr>';
 }
 
 function addChaperone() {
@@ -5745,6 +5848,22 @@ function renderDrivers() {
       ondragleave="onRowDragLeave(event)"
       ondrop="onRowDrop(event,${d.id},'driver')"
       ondragend="onRowDragEnd(event,'driver')"` : '';
+    // Find chaperones tagged to same guests as this driver
+    const taggedChapIds = new Set();
+    db.guests.forEach(g => {
+      const isDrv = g.arr_driver_id == d.id || g.dep_driver_id == d.id || g.act_driver_id == d.id ||
+        [...(g.arr_drivers||[]),...(g.dep_drivers||[]),...(g.act_drivers||[]),...(g.extraCars||[])]
+          .some(x => x.driver_id == d.id);
+      if (!isDrv) return;
+      if (g.arr_chaperone_id) taggedChapIds.add(g.arr_chaperone_id);
+      if (g.dep_chaperone_id) taggedChapIds.add(g.dep_chaperone_id);
+      if (g.act_chaperone_id) taggedChapIds.add(g.act_chaperone_id);
+    });
+    const taggedChapNames = [...taggedChapIds].map(id => {
+      const c = db.chaperones.find(x => x.id == id);
+      return c ? esc(c.name) : '';
+    }).filter(Boolean).join(', ') || '—';
+
     return `<tr id="driverrow_${d.id}" style="${dragStyle}" ${dragAttrs}>
       <td style="text-align:center;color:var(--slate-light);font-size:1rem;padding:0 6px;">${reorder ? '⠿' : ''}</td>
       <td>${i+1}</td>
@@ -5755,13 +5874,14 @@ function renderDrivers() {
       <td style="font-size:0.78rem;">${esc(d.color)||'—'}</td>
       <td style="font-size:0.75rem;color:var(--slate-light);">${esc(d.remark)||'—'}</td>
       <td style="font-size:0.78rem;max-width:200px;">${assigned}</td>
+      <td style="font-size:0.78rem;color:var(--slate);">${taggedChapNames}</td>
       <td><span style="font-size:0.72rem;font-weight:700;color:${statusColor};background:${statusBg};padding:2px 8px;border-radius:4px;">${autoStatus}</span></td>
       <td style="white-space:nowrap;">
         <button class="btn btn-outline btn-sm" onclick="editDriver(${d.id})">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteDriver(${d.id})">🗑</button>
       </td>
     </tr>`;
-  }).join('') || '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--slate-light);">No drivers yet.</td></tr>';
+  }).join('') || '<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--slate-light);">No drivers yet.</td></tr>';
 }
 
 function addDriver() {
@@ -6677,7 +6797,7 @@ function svgTable(t) {
     <text x="${cx}" y="${(cy + 8).toFixed(1)}" font-family="Inter,sans-serif" font-size="8.5"
     fill="#718096" text-anchor="middle" dominant-baseline="middle" pointer-events="none">${seated}/${seats}</text>`;
 
-  return `<g class="svg-table" data-table-id="${id}" onmousedown="startTableDrag(event,'${id}')" style="cursor:grab;">
+  return `<g class="svg-table" data-table-id="${id}" onmousedown="startTableDrag(event,'${id}')" ontouchstart="startTableDrag(event,'${id}')" style="cursor:grab;touch-action:none;">
     ${selRing}
     ${chairSVGs.join('')}
     ${surface}
@@ -6689,59 +6809,72 @@ let _svgDrag = null;
 let _seatPickerContext = null;
 let _isDragging = false; // prevents chair clicks from firing during drag
 
+function _setSvgHeight() {
+  const svg = document.getElementById('seatingCanvas');
+  if (!svg) return;
+  const h = Math.max(400, Math.min(700, window.innerHeight - 230));
+  svg.setAttribute('height', h);
+  const vb = svg.getAttribute('viewBox') || '0 0 900 620';
+  const parts = vb.split(' ');
+  svg.setAttribute('viewBox', `${parts[0]} ${parts[1]} ${parts[2]} ${h}`);
+}
+
 function startTableDrag(e, tableId) {
   if (e.target.tagName === 'text') return;
-  e.preventDefault();
+  const isTouch = e.type === 'touchstart';
+  if (isTouch && e.cancelable) e.preventDefault();
   e.stopPropagation();
   _seating.selectedTableId = tableId;
   renderTableDetail();
 
   const svg  = document.getElementById('seatingCanvas');
-  const rect = svg.getBoundingClientRect();
   const t    = _seating.tables.find(x => x.id === tableId);
   if (!t) return;
 
-  const svgW   = parseFloat(svg.getAttribute('viewBox')?.split(' ')[2]) || rect.width;
-  const svgH   = parseFloat(svg.getAttribute('viewBox')?.split(' ')[3]) || rect.height;
-  const scaleX = svgW / rect.width;
-  const scaleY = svgH / rect.height;
-
-  const startX = (e.clientX - rect.left) * scaleX;
-  const startY = (e.clientY - rect.top)  * scaleY;
-
-  _svgDrag = {
-    tableId,
-    offsetX: startX - t.x,
-    offsetY: startY - t.y,
-    scaleX, scaleY, svgW, svgH,
-    moved: false
+  const getXY = ev => {
+    const r  = svg.getBoundingClientRect();
+    const vb = svg.getAttribute('viewBox')?.split(' ') || ['0','0','900','620'];
+    const sx = parseFloat(vb[2]) / r.width;
+    const sy = parseFloat(vb[3]) / r.height;
+    const pt = ev.touches ? ev.touches[0] : ev;
+    return { x: (pt.clientX - r.left) * sx, y: (pt.clientY - r.top) * sy, sx, sy };
   };
+
+  const start = getXY(e);
+  _svgDrag = { tableId, offsetX: start.x - t.x, offsetY: start.y - t.y, moved: false };
   _isDragging = false;
 
   const onMove = ev => {
     if (!_svgDrag || _svgDrag.tableId !== tableId) return;
-    const cr = svg.getBoundingClientRect();
-    const nx = (ev.clientX - cr.left) * _svgDrag.scaleX - _svgDrag.offsetX;
-    const ny = (ev.clientY - cr.top)  * _svgDrag.scaleY - _svgDrag.offsetY;
-    // Only start actual drag after moving more than 5px (prevents accidental drags)
-    const dist = Math.sqrt((nx-t.x)**2 + (ny-t.y)**2);
-    if (dist > 5) { _svgDrag.moved = true; _isDragging = true; }
+    if (ev.cancelable) ev.preventDefault();
+    const pos = getXY(ev);
+    const nx = pos.x - _svgDrag.offsetX;
+    const ny = pos.y - _svgDrag.offsetY;
+    const dist = Math.sqrt((nx - t.x) ** 2 + (ny - t.y) ** 2);
+    if (dist > 4) { _svgDrag.moved = true; _isDragging = true; }
     if (_svgDrag.moved) {
+      const vb = svg.getAttribute('viewBox')?.split(' ') || ['0','0','900','620'];
+      const svgW = parseFloat(vb[2]), svgH = parseFloat(vb[3]);
       const pad = 80;
-      t.x = Math.max(pad, Math.min(_svgDrag.svgW - pad, nx));
-      t.y = Math.max(pad, Math.min(_svgDrag.svgH - pad, ny));
+      t.x = Math.max(pad, Math.min(svgW - pad, nx));
+      t.y = Math.max(pad, Math.min(svgH - pad, ny));
       renderSeatingCanvas();
     }
   };
   const onUp = () => {
     _svgDrag = null;
-    setTimeout(() => { _isDragging = false; }, 50);
+    setTimeout(() => { _isDragging = false; }, 60);
     document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('mouseup',   onUp);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend',  onUp);
   };
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
+  document.addEventListener('mousemove', onMove, { passive: false });
+  document.addEventListener('mouseup',   onUp);
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend',  onUp);
 }
+
 
 async function handleChairClick(seatId, tableId) {
   if (_isDragging) return; // ignore clicks that were part of a drag
@@ -7036,7 +7169,7 @@ function confirmDeleteCancel() {
 }
 
 // ── Set your team password here ──────────────
-const APP_PASSWORD = 'PYLJJ';
+const APP_PASSWORD = 'APS2026';
 // ─────────────────────────────────────────────
 
 const SESSION_KEY = 'aps2026_auth';
@@ -7101,12 +7234,19 @@ async function initFirebase() {
     console.error('Firebase init failed, falling back to localStorage:', e);
     _loadLocalFallback();
     migrateDB();
-    renderGuestList();
+    const savedTab = localStorage.getItem('aps2026_active_tab') || 'guest-list';
+    showView(savedTab === 'add-guest' ? 'guest-list' : savedTab);
   }
 })();
 }
 
-// On page load — check if already authenticated this session
+// Resize handler — keep seating SVG height responsive
+window.addEventListener('resize', () => {
+  if (document.getElementById('view-seating')?.classList.contains('active')) {
+    _setSvgHeight();
+    renderSeatingCanvas();
+  }
+});
 if (isUnlocked()) {
   // Already logged in — hide overlay immediately and start app
   const overlay = document.getElementById('pwOverlay');
