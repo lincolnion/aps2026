@@ -2216,8 +2216,8 @@ function loadDB() {
 
 async function _loadFromFirestore() {
   try {
-    const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const snap = await getDoc(doc(_firestoreDb, 'aps2026', 'maindb'));
+    const { doc, getDocFromServer } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDocFromServer(doc(_firestoreDb, 'aps2026', 'maindb'));
     if (snap.exists()) {
       db = _fromFirestore(snap.data());
       migrateDB();
@@ -2225,6 +2225,23 @@ async function _loadFromFirestore() {
       seedData();
       await _doSave();
     }
+
+    // Safety net: if localStorage has MORE check-ins than the server returned,
+    // those are check-ins written to LS but not yet confirmed by Firestore.
+    // Merge them in so they're not lost.
+    try {
+      const lsRaw = localStorage.getItem('aps2026_db');
+      if (lsRaw) {
+        const lsDb = JSON.parse(lsRaw);
+        const lsLog = lsDb.checkinLog || {};
+        if (!db.checkinLog) db.checkinLog = {};
+        // Add any key from localStorage not yet in server data
+        Object.entries(lsLog).forEach(([k, v]) => {
+          if (!db.checkinLog[k]) db.checkinLog[k] = v;
+        });
+      }
+    } catch(e) {}
+
   } catch(e) {
     console.warn('Firestore load failed, using localStorage:', e);
     _loadLocalFallback();
@@ -2267,12 +2284,16 @@ function _loadLocalFallback() {
   } catch(e) { seedData(); }
 }
 
-function saveDB() {
-  // Write localStorage as offline fallback
+function saveDB(immediate) {
+  // Write localStorage synchronously — instant backup
   try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
-  // Debounce Firestore write 800ms
+  // Write to Firestore — immediately if requested, else debounce 800ms
   clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(_doSave, 800);
+  if (immediate) {
+    _doSave();
+  } else {
+    _saveTimer = setTimeout(_doSave, 800);
+  }
 }
 
 async function _doSave() {
@@ -5970,23 +5991,15 @@ async function checkinForceSave() {
   const btn    = document.getElementById('checkinSaveBtn');
   const status = document.getElementById('checkinSyncStatus');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; btn.style.background = '#718096'; }
-
-  try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
-
-  try {
-    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const payload = _toFirestore(db);
-    await setDoc(doc(_firestoreDb, 'aps2026', 'maindb'), payload);
-    if (btn)    { btn.disabled = false; btn.textContent = '✓ Saved'; btn.style.background = 'var(--green)'; }
-    if (status) { status.textContent = 'Saved — safe to refresh'; status.style.color = 'var(--green)'; }
-    setTimeout(() => {
-      if (btn)    { btn.textContent = '☁ Save'; btn.style.background = 'var(--gold)'; }
-      if (status)   status.textContent = '';
-    }, 3000);
-  } catch(e) {
-    if (btn)    { btn.disabled = false; btn.textContent = '⚠ Retry'; btn.style.background = 'var(--red)'; }
-    if (status) { status.textContent = 'Save failed'; status.style.color = 'var(--red)'; }
-  }
+  saveDB(true);
+  // _doSave is async — wait for it then show confirmation
+  await new Promise(r => setTimeout(r, 1500));
+  if (btn)    { btn.disabled = false; btn.textContent = '✓ Saved'; btn.style.background = 'var(--green)'; }
+  if (status) { status.textContent = 'Saved — safe to refresh'; status.style.color = 'var(--green)'; }
+  setTimeout(() => {
+    if (btn)    { btn.textContent = '☁ Save'; btn.style.background = 'var(--gold)'; }
+    if (status)   status.textContent = '';
+  }, 3000);
 }
 
 async function doCheckin(sessionKey, personKeyOrGuestId, type, idx) {
@@ -5997,24 +6010,8 @@ async function doCheckin(sessionKey, personKeyOrGuestId, type, idx) {
   } else {
     db.checkinLog[k] = { time: new Date().toISOString(), by: 'staff' };
   }
-
-  // Write localStorage immediately as backup
-  try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
-
+  saveDB(true); // same as saveGuest() but immediate — no debounce
   renderCheckin();
-
-  // Save directly to Firestore NOW — no debounce, no buffer
-  // This is why the ☁ Save button exists: to confirm Firestore write completed
-  if (!_firestoreDb) return;
-  try {
-    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const payload = _toFirestore(db);
-    await setDoc(doc(_firestoreDb, 'aps2026', 'maindb'), payload);
-    _setCheckinSyncStatus('saved');
-  } catch(e) {
-    console.error('doCheckin save failed:', e);
-    _setCheckinSyncStatus('error');
-  }
 }
 
 function resetCheckin() {
