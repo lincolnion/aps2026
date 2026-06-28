@@ -2216,8 +2216,11 @@ function loadDB() {
 
 async function _loadFromFirestore() {
   try {
-    const { doc, getDocFromServer } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const snap = await getDocFromServer(doc(_firestoreDb, 'aps2026', 'maindb'));
+    const { doc, getDocFromServer, onSnapshot } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const docRef = doc(_firestoreDb, 'aps2026', 'maindb');
+
+    // Load fresh from server (no cache)
+    const snap = await getDocFromServer(docRef);
     if (snap.exists()) {
       db = _fromFirestore(snap.data());
       migrateDB();
@@ -2226,21 +2229,38 @@ async function _loadFromFirestore() {
       await _doSave();
     }
 
-    // Safety net: if localStorage has MORE check-ins than the server returned,
-    // those are check-ins written to LS but not yet confirmed by Firestore.
-    // Merge them in so they're not lost.
+    // Merge any localStorage check-ins not yet in Firestore (rapid refresh safety net)
     try {
       const lsRaw = localStorage.getItem('aps2026_db');
       if (lsRaw) {
-        const lsDb = JSON.parse(lsRaw);
-        const lsLog = lsDb.checkinLog || {};
+        const lsLog = JSON.parse(lsRaw).checkinLog || {};
         if (!db.checkinLog) db.checkinLog = {};
-        // Add any key from localStorage not yet in server data
         Object.entries(lsLog).forEach(([k, v]) => {
           if (!db.checkinLog[k]) db.checkinLog[k] = v;
         });
       }
     } catch(e) {}
+
+    // Real-time listener — updates this device when ANOTHER device saves
+    let firstSnapshot = true;
+    onSnapshot(docRef, snap => {
+      if (!snap.exists()) return;
+      if (firstSnapshot) { firstSnapshot = false; return; } // skip echo of our own load
+      const remote = _fromFirestore(snap.data());
+      // Merge: take all remote data, but keep any local check-ins not in remote
+      const localLog = db.checkinLog || {};
+      db = remote;
+      migrateDB();
+      if (!db.checkinLog) db.checkinLog = {};
+      Object.entries(localLog).forEach(([k, v]) => {
+        if (!db.checkinLog[k]) db.checkinLog[k] = v;
+      });
+      syncDerivedArrays();
+      const active = document.querySelector('.view.active')?.id?.replace('view-', '');
+      if (active) _refreshView(active);
+      showSyncIndicator('synced');
+      setTimeout(() => showSyncIndicator(''), 2500);
+    }, err => console.warn('Snapshot error:', err));
 
   } catch(e) {
     console.warn('Firestore load failed, using localStorage:', e);
@@ -2285,9 +2305,8 @@ function _loadLocalFallback() {
 }
 
 function saveDB(immediate) {
-  // Write localStorage synchronously — instant backup
+  // Write localStorage synchronously
   try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
-  // Write to Firestore — immediately if requested, else debounce 800ms
   clearTimeout(_saveTimer);
   if (immediate) {
     _doSave();
@@ -2301,10 +2320,8 @@ async function _doSave() {
   try {
     const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const payload = _toFirestore(db);
-    if (JSON.stringify(payload).length > 800000) console.warn('Payload large');
     await setDoc(doc(_firestoreDb, 'aps2026', 'maindb'), payload);
     showSyncIndicator('saved');
-    _setCheckinSyncStatus('saved');
   } catch(e) {
     console.error('Firestore save failed:', e.code, e.message);
     showSyncIndicator('error');
@@ -6002,7 +6019,7 @@ async function checkinForceSave() {
   }, 3000);
 }
 
-async function doCheckin(sessionKey, personKeyOrGuestId, type, idx) {
+function doCheckin(sessionKey, personKeyOrGuestId, type, idx) {
   if (!db.checkinLog) db.checkinLog = {};
   const k = checkinKey(sessionKey, personKeyOrGuestId, type, idx);
   if (db.checkinLog[k]) {
@@ -6010,8 +6027,54 @@ async function doCheckin(sessionKey, personKeyOrGuestId, type, idx) {
   } else {
     db.checkinLog[k] = { time: new Date().toISOString(), by: 'staff' };
   }
-  saveDB(true); // same as saveGuest() but immediate — no debounce
+  // Write to localStorage immediately
+  try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
+  // Show save button so user knows to confirm before refreshing
+  _setCheckinSyncStatus('unsaved');
   renderCheckin();
+}
+
+async function checkinForceSave() {
+  const btn    = document.getElementById('checkinSaveBtn');
+  const status = document.getElementById('checkinSyncStatus');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; btn.style.background = '#718096'; }
+  if (status) status.textContent = '';
+  try {
+    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const payload = _toFirestore(db);
+    await setDoc(doc(_firestoreDb, 'aps2026', 'maindb'), payload);
+    // Confirmed — update localStorage to match
+    try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
+    if (btn)    { btn.disabled = false; btn.textContent = '✓ Saved'; btn.style.background = 'var(--green)'; }
+    if (status) { status.textContent = 'Saved — safe to refresh'; status.style.color = 'var(--green)'; }
+    setTimeout(() => {
+      if (btn)    { btn.style.display = 'none'; }
+      if (status)   status.textContent = '';
+    }, 4000);
+    _checkinUnsaved = false;
+  } catch(e) {
+    console.error('checkinForceSave failed:', e);
+    if (btn)    { btn.disabled = false; btn.textContent = '⚠ Retry Save'; btn.style.background = 'var(--red)'; }
+    if (status) { status.textContent = 'Save failed — check connection'; status.style.color = 'var(--red)'; }
+  }
+}
+
+function _setCheckinSyncStatus(state) {
+  const btn    = document.getElementById('checkinSaveBtn');
+  const status = document.getElementById('checkinSyncStatus');
+  if (!btn) return;
+  if (state === 'unsaved') {
+    _checkinUnsaved = true;
+    btn.style.display = 'flex';
+    btn.disabled      = false;
+    btn.textContent   = '☁ Save';
+    btn.style.background = 'var(--gold)';
+    if (status) { status.textContent = '⚠ Click Save before refreshing'; status.style.color = '#c05500'; }
+  } else if (state === 'saved') {
+    _checkinUnsaved = false;
+    btn.style.display = 'none';
+    if (status) status.textContent = '';
+  }
 }
 
 function resetCheckin() {
