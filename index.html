@@ -471,7 +471,79 @@
     .stats-row { grid-template-columns: repeat(2, 1fr); }
     .modal { max-width: 100%; margin: 0; }
     .modal-overlay { padding: 0; align-items: flex-end; }
-    .modal { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+    .modal { border-radius: var(--radius-lg) var(--radius-lg) 0 0; max-height: 92vh; }
+
+    /* Header — shrink logo, stack badges */
+    .app-header { padding: 0 12px; gap: 8px; height: 56px; }
+    .app-header .logo { font-size: 1.05rem; }
+    .app-header .subtitle { display: none; }
+    .guest-count-badge { font-size: 0.65rem; padding: 2px 8px; }
+    #lockBtn, .app-header button { font-size: 0.72rem !important; padding: 5px 10px !important; }
+
+    /* Nav — smaller tabs, tighter padding, horizontal scroll preserved */
+    .nav-bar { padding: 0 8px; top: 56px; }
+    .nav-tab { font-size: 0.7rem; padding: 8px 10px; }
+
+    /* Section titles */
+    .section-title { font-size: 1.05rem; }
+    .section-desc { font-size: 0.78rem; }
+
+    /* Toolbar — stack search/filter/buttons vertically */
+    .toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+    .toolbar-right { margin-left: 0; flex-wrap: wrap; }
+    .search-box { width: 100%; }
+
+    /* Cards */
+    .card { padding: 14px 16px; }
+    .guest-card { padding: 13px; }
+    .guest-name { font-size: 0.92rem; }
+
+    /* Tables — allow horizontal scroll, shrink font/padding */
+    table { font-size: 0.76rem; }
+    th, td { padding: 8px 10px !important; }
+    .table-wrapper { -webkit-overflow-scrolling: touch; }
+
+    /* Buttons */
+    .btn { font-size: 0.78rem; padding: 7px 12px; }
+    .btn-sm { font-size: 0.72rem; padding: 5px 9px; }
+
+    /* Stat cards */
+    .stat-card { padding: 10px 12px; }
+    .stat-value { font-size: 1.5rem; }
+    .stat-label { font-size: 0.62rem; }
+
+    /* Check-in cards */
+    .checkin-card { flex-direction: column; align-items: stretch; gap: 8px; padding: 12px; }
+    .checkin-avatar { width: 36px; height: 36px; }
+    .checkin-btn { width: 100%; padding: 9px; }
+
+    /* Notes — sidebar collapses to top strip */
+    #view-notes.active { flex-direction: column; height: auto; min-height: calc(100vh - 110px); }
+    #notesSidebar { width: 100% !important; max-height: 140px; border-right: none; border-bottom: 1px solid rgba(200,149,42,0.2); }
+    #notePagesList { display: flex; flex-direction: row; overflow-x: auto; gap: 6px; padding: 6px; }
+    .note-page-item { min-width: 140px; flex-shrink: 0; }
+    #noteEditor { padding: 16px 18px; }
+    #notesToolbar { padding: 6px 10px; }
+
+    /* Hotel/dietary extra options grid */
+    div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+    /* Activity companion / extra car rows */
+    div[style*="grid-template-columns:1fr 100px 140px 100px auto"] { grid-template-columns: 1fr !important; }
+    div[style*="grid-template-columns:1fr 120px 160px 120px 1fr auto"] { grid-template-columns: 1fr !important; }
+
+    /* Flight status bar and check-in session bar — full width inputs */
+    #flightApiBar input, #flightApiBar select,
+    #airlabsApiKey { min-width: 0 !important; width: 100% !important; max-width: 100% !important; }
+    #checkinSession { max-width: 100% !important; width: 100%; }
+    .card[style*="padding:14px 20px"] > div { flex-direction: column; align-items: stretch !important; gap: 8px !important; }
+    #checkinSaveBtn { width: 100%; justify-content: center; }
+  }
+
+  @media (max-width: 420px) {
+    .app-header .logo { font-size: 0.92rem; }
+    .nav-tab { padding: 7px 8px; font-size: 0.66rem; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
   }
   /* ── PASSWORD SCREEN ── */
   .pw-overlay {
