@@ -606,6 +606,7 @@
      handles are disabled and dimmed. The Check-In tab itself is left fully
      functional so front-desk staff can check guests in / add walk-ins. */
   body.role-checkin .nav-tab[data-view="add-guest"] { display: none !important; }
+  body.role-checkin .nav-tab[data-view="backups"] { display: none !important; }
   body.role-checkin .view:not(#view-checkin) button,
   body.role-checkin .view:not(#view-checkin) input,
   body.role-checkin .view:not(#view-checkin) select,
@@ -830,6 +831,7 @@
   <div class="nav-tab" data-view="checkin" style="color:var(--gold-light);font-weight:700;">✅ Check-In</div>
   <div class="nav-tab" data-view="seating">🪑 Seating</div>
   <div class="nav-tab" data-view="notes">📝 Notes</div>
+  <div class="nav-tab" data-view="backups">🗄️ Backups</div>
 </nav>
 
 <main class="main">
@@ -1788,6 +1790,20 @@
 
   </div>
 
+  <!-- ──────────────── BACKUPS / VERSION HISTORY ──────────────── -->
+  <div class="view" id="view-backups">
+    <div class="card" style="padding:16px 20px;margin-bottom:16px;">
+      <div style="font-weight:700;color:var(--navy);margin-bottom:6px;">🗄️ Version History &amp; Tamper Recovery</div>
+      <div style="font-size:0.82rem;color:var(--slate-light);line-height:1.5;margin-bottom:12px;">
+        The app automatically saves a snapshot of the data right before each save (at most once every 10 minutes).
+        If something gets edited incorrectly, restore an earlier snapshot below. Restoring first takes a safety copy
+        of the current state, so a restore can itself be undone.
+      </div>
+      <button class="btn btn-gold" id="manualSnapshotBtn" onclick="manualSnapshotNow()">📸 Snapshot Now</button>
+    </div>
+    <div id="backupsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
+
 </main>
 
 <!-- ──────────────── GUEST DETAIL MODAL ──────────────── -->
@@ -2361,6 +2377,7 @@ function _refreshView(viewName) {
     'checkin':       renderCheckin,
     'seating':       renderSeating,
     'notes':         initNotes,
+    'backups':       renderBackups,
   };
   const fn = fns[viewName];
   if (fn) { try { fn(); } catch(e) {} }
@@ -2388,11 +2405,150 @@ function saveDB(immediate) {
 async function _doSave() {
   if (!_firestoreDb || !window._fsSetDoc) return;
   try {
-    await window._fsSetDoc(window._fsDoc(_firestoreDb,'aps2026','maindb'), _toFirestore(db));
+    await _writeMainDoc(_toFirestore(db));
     showSyncIndicator('saved');
   } catch(e) {
     console.error('Firestore save failed:', e.code, e.message);
     showSyncIndicator('error');
+  }
+}
+
+// ═══════════════════════════════════════════
+//  VERSION HISTORY / TAMPER RECOVERY
+//  (Spark-plan friendly — no Blaze upgrade needed)
+//
+//  Before every write to aps2026/maindb, we snapshot whatever is CURRENTLY
+//  on the server into a separate aps2026_versions collection (throttled to
+//  at most once every 10 min so routine check-ins don't spam writes/storage).
+//  That gives a rolling "last known states" history you can roll back to
+//  from the Backups tab if a bad edit gets saved.
+// ═══════════════════════════════════════════
+const VERSION_COLLECTION   = 'aps2026_versions';
+const VERSION_MIN_INTERVAL = 10 * 60 * 1000; // throttle: at most 1 auto-snapshot / 10 min
+const VERSION_KEEP_COUNT   = 60;             // prune beyond this many stored snapshots
+
+// Central write funnel — every save of the main document should go through
+// this, so we consistently get a pre-write snapshot.
+async function _writeMainDoc(payload) {
+  await _maybeSnapshotBeforeWrite();
+  await window._fsSetDoc(window._fsDoc(_firestoreDb,'aps2026','maindb'), payload);
+}
+
+async function _maybeSnapshotBeforeWrite() {
+  try {
+    const last = parseInt(localStorage.getItem('aps2026_last_snapshot') || '0', 10);
+    if (Date.now() - last < VERSION_MIN_INTERVAL) return; // too soon — skip
+    await _takeSnapshot('auto');
+  } catch(e) {
+    console.warn('Auto-snapshot skipped:', e);
+  }
+}
+
+async function _takeSnapshot(reason) {
+  if (!_firestoreDb || !window._fsGetDocFromServer) return false;
+  const mainRef = window._fsDoc(_firestoreDb, 'aps2026', 'maindb');
+  const current = await window._fsGetDocFromServer(mainRef);
+  if (!current.exists()) return false;
+  const id = String(Date.now());
+  const verRef = window._fsDoc(_firestoreDb, VERSION_COLLECTION, id);
+  await window._fsSetDoc(verRef, {
+    ts: Date.now(),
+    savedAt: new Date().toISOString(),
+    reason: reason || 'auto',
+    data: current.data()
+  });
+  localStorage.setItem('aps2026_last_snapshot', String(Date.now()));
+  _pruneOldVersions().catch(()=>{});
+  return true;
+}
+
+async function _pruneOldVersions() {
+  if (!window._fsCollection || !window._fsQuery) return;
+  const colRef = window._fsCollection(_firestoreDb, VERSION_COLLECTION);
+  const q = window._fsQuery(colRef, window._fsOrderBy('ts', 'desc'));
+  const snap = await window._fsGetDocs(q);
+  const docs = snap.docs;
+  if (docs.length <= VERSION_KEEP_COUNT) return;
+  const toDelete = docs.slice(VERSION_KEEP_COUNT);
+  for (const d of toDelete) {
+    try { await window._fsDeleteDoc(d.ref); } catch(e) {}
+  }
+}
+
+// Manual "snapshot now" — bypasses the throttle. Use right before a risky
+// bulk edit. Button is admin-only via the same view-only CSS lockdown used
+// elsewhere (disabled for the check-in role).
+async function manualSnapshotNow() {
+  const btn = document.getElementById('manualSnapshotBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving snapshot…'; }
+  const ok = await _takeSnapshot('manual').catch(e => { console.error(e); return false; });
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = ok ? '✓ Snapshot saved' : '⚠ Snapshot failed';
+    setTimeout(() => { if(btn) btn.textContent = '📸 Snapshot Now'; }, 2500);
+  }
+  renderBackups();
+}
+
+async function renderBackups() {
+  const listEl = document.getElementById('backupsList');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="padding:20px;color:var(--slate-light);">Loading version history…</div>';
+  if (!_firestoreDb || !window._fsCollection) {
+    listEl.innerHTML = '<div style="padding:20px;color:var(--slate-light);">Not connected to the cloud database.</div>';
+    return;
+  }
+  try {
+    const colRef = window._fsCollection(_firestoreDb, VERSION_COLLECTION);
+    const q = window._fsQuery(colRef, window._fsOrderBy('ts', 'desc'), window._fsLimit(VERSION_KEEP_COUNT));
+    const snap = await window._fsGetDocs(q);
+    if (snap.empty) {
+      listEl.innerHTML = '<div style="padding:20px;color:var(--slate-light);">No snapshots yet. Snapshots are taken automatically before saves (at most once every 10 minutes), or click "Snapshot Now" above.</div>';
+      return;
+    }
+    listEl.innerHTML = snap.docs.map(d => {
+      const v = d.data();
+      const dt = new Date(v.ts);
+      const label = dt.toLocaleString('en-SG', { dateStyle:'medium', timeStyle:'medium' });
+      const reasonBadge = v.reason === 'manual' ? '📸 Manual' : (v.reason === 'pre-restore' ? '⏪ Pre-Restore Safety Copy' : '🕐 Auto');
+      return `
+        <div class="checkin-card" style="justify-content:space-between;">
+          <div>
+            <div style="font-weight:700;color:var(--navy);">${label}</div>
+            <div style="font-size:0.75rem;color:var(--slate-light);">${reasonBadge}</div>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="restoreVersion('${d.id}')">⏪ Restore This Version</button>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    console.error('Failed to load version history:', e);
+    listEl.innerHTML = '<div style="padding:20px;color:var(--red);">Failed to load version history. If this is the first time using Backups, make sure the Firestore rule for the aps2026_versions collection has been added (see setup notes).</div>';
+  }
+}
+
+async function restoreVersion(versionId) {
+  if (currentRole() !== 'admin') { alert('Only an admin login can restore a version.'); return; }
+  if (!confirm('Restore this version? This will overwrite the CURRENT live data with this older snapshot. A safety copy of the current state will be taken first, so this can itself be undone.')) return;
+  try {
+    // Safety snapshot of current (possibly bad) state before we overwrite it
+    await _takeSnapshot('pre-restore');
+
+    const verRef  = window._fsDoc(_firestoreDb, VERSION_COLLECTION, versionId);
+    const verSnap = await window._fsGetDocFromServer(verRef);
+    if (!verSnap.exists()) { alert('That snapshot could not be found.'); return; }
+    const restoredData = verSnap.data().data;
+
+    db = _fromFirestore(restoredData);
+    migrateDB();
+    syncDerivedArrays();
+    await window._fsSetDoc(window._fsDoc(_firestoreDb,'aps2026','maindb'), restoredData);
+    try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
+
+    alert('Version restored. Reloading the app…');
+    location.reload();
+  } catch(e) {
+    console.error('Restore failed:', e);
+    alert('Restore failed: ' + e.message);
   }
 }
 
@@ -2952,6 +3108,7 @@ function showView(name) {
   if (name === 'chaperones')   renderChaperones();
   if (name === 'drivers')      renderDrivers();
   if (name === 'checkin')      renderCheckin();
+  if (name === 'backups')      renderBackups();
   if (name === 'seating') { _setSvgHeight(); renderSeating(); }
   if (name === 'add-guest') {
     populateHotelSelect();
@@ -6103,7 +6260,7 @@ async function doCheckin(sessionKey, personKeyOrGuestId, type, idx) {
   if (btn) { btn.style.display='flex'; btn.disabled=true; btn.textContent='⏳ Saving…'; btn.style.background='#718096'; }
 
   try {
-    await window._fsSetDoc(window._fsDoc(_firestoreDb,'aps2026','maindb'), _toFirestore(db));
+    await _writeMainDoc(_toFirestore(db));
     try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
     if (btn)    { btn.style.display='none'; }
     if (status) { status.textContent='✓ Saved'; status.style.color='var(--green)';
@@ -6120,7 +6277,7 @@ async function checkinForceSave() {
   const status = document.getElementById('checkinSyncStatus');
   if (btn) { btn.disabled=true; btn.textContent='⏳ Saving…'; btn.style.background='#718096'; }
   try {
-    await window._fsSetDoc(window._fsDoc(_firestoreDb,'aps2026','maindb'), _toFirestore(db));
+    await _writeMainDoc(_toFirestore(db));
     try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
     if (btn)    { btn.style.display='none'; }
     if (status) { status.textContent='✓ Saved'; status.style.color='var(--green)';
@@ -7439,7 +7596,7 @@ async function initFirebase() {
 (async () => {
   try {
     const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    const { getFirestore, doc, setDoc, getDocFromServer } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const { getFirestore, doc, setDoc, getDocFromServer, collection, query, orderBy, limit, getDocs, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
 
     const firebaseConfig = {
       apiKey:            "AIzaSyDiTiQE86w-pf6oGzoCgYyXBawn_OHYKas",
@@ -7458,6 +7615,12 @@ async function initFirebase() {
     window._fsDoc            = doc;
     window._fsSetDoc         = setDoc;
     window._fsGetDocFromServer = getDocFromServer;
+    window._fsCollection     = collection;
+    window._fsQuery          = query;
+    window._fsOrderBy        = orderBy;
+    window._fsLimit          = limit;
+    window._fsGetDocs        = getDocs;
+    window._fsDeleteDoc      = deleteDoc;
 
     loadDB();
     await _loadFromFirestore();
