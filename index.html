@@ -357,7 +357,15 @@
   .check-no { color: #ddd; }
 
   /* ── ACTIVITY TABLE ── */
-  .activity-option-header { background: var(--gold); color: white; text-align: center; }
+  .activity-option-header {
+    background: var(--gold); color: white; text-align: center;
+    white-space: normal !important;   /* override global th nowrap so long titles wrap */
+    width: 150px; max-width: 150px;   /* equal fixed width for every activity/meal column */
+    vertical-align: top; line-height: 1.35;
+  }
+  .activity-option-header div:first-child {
+    word-break: break-word; hyphens: auto; font-size: 0.72rem;
+  }
 
   /* ── EVENTS TABLE ── */
   .event-day-badge {
@@ -369,6 +377,53 @@
   .day-d3 { background: #fef3c7; color: #92400e; }
   .day-d4 { background: #fce7f3; color: #9d174d; }
   .day-d5 { background: #ede9fe; color: #5b21b6; }
+
+  /* ── CALENDAR (week/day overview) ── */
+  .cal-toolbar {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .cal-mode-switch { display: flex; border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .cal-mode-btn {
+    background: white; border: none; padding: 7px 16px; font-size: 0.8rem; font-weight: 600;
+    color: var(--slate); cursor: pointer; font-family: 'Inter', sans-serif;
+  }
+  .cal-mode-btn.active { background: var(--navy); color: white; }
+  .cal-nav { display: flex; gap: 6px; }
+  .cal-range-label { font-weight: 700; color: var(--navy); font-size: 0.95rem; flex: 1; min-width: 160px; }
+  .cal-legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.68rem; color: var(--slate-light); }
+  .cal-legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+  .cal-grid-wrapper {
+    overflow-x: auto; overflow-y: auto; max-height: 72vh;
+    border: 1px solid var(--border); border-radius: var(--radius-lg); background: white;
+  }
+  .cal-grid {
+    display: grid;
+    min-width: 640px;
+  }
+  .cal-cell { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); padding: 4px; }
+  .cal-cell:last-child { border-right: none; }
+  .cal-corner { background: var(--ivory); }
+  .cal-daylabel {
+    background: var(--navy); color: white; text-align: center; padding: 8px 4px;
+    position: sticky; top: 0; z-index: 2;
+  }
+  .cal-daylabel.cal-today { background: var(--gold); }
+  .cal-daylabel-dow { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
+  .cal-daylabel-date { font-size: 0.85rem; font-weight: 700; margin-top: 2px; }
+  .cal-timelabel {
+    background: var(--ivory); text-align: right; padding: 6px 8px;
+    font-size: 0.68rem; color: var(--slate-light); font-weight: 600; white-space: nowrap;
+  }
+  .cal-slot { min-height: 40px; display: flex; flex-direction: column; gap: 3px; }
+  .cal-chip {
+    background: var(--bg-card, #f7f8fa); border-left: 3px solid var(--slate);
+    border-radius: 4px; padding: 3px 6px; font-size: 0.68rem; line-height: 1.3;
+  }
+  .cal-chip-time { font-weight: 700; color: var(--navy); }
+  .cal-chip-title { color: var(--navy); word-break: break-word; }
+  .cal-chip-loc { color: var(--slate-light); font-size: 0.64rem; }
 
   /* ── TOOLBAR ── */
   .toolbar {
@@ -607,16 +662,16 @@
      functional so front-desk staff can check guests in / add walk-ins. */
   body.role-checkin .nav-tab[data-view="add-guest"] { display: none !important; }
   body.role-checkin .nav-tab[data-view="backups"] { display: none !important; }
-  body.role-checkin .view:not(#view-checkin) button,
-  body.role-checkin .view:not(#view-checkin) input,
-  body.role-checkin .view:not(#view-checkin) select,
-  body.role-checkin .view:not(#view-checkin) textarea,
-  body.role-checkin .view:not(#view-checkin) [draggable="true"],
-  body.role-checkin .view:not(#view-checkin) [contenteditable="true"],
-  body.role-checkin .view:not(#view-checkin) [onmousedown],
-  body.role-checkin .view:not(#view-checkin) [ontouchstart],
-  body.role-checkin .view:not(#view-checkin) .meal-check,
-  body.role-checkin .view:not(#view-checkin) .guest-chip {
+  body.role-checkin .view:not(#view-checkin):not(#view-calendar) button,
+  body.role-checkin .view:not(#view-checkin):not(#view-calendar) input,
+  body.role-checkin .view:not(#view-checkin):not(#view-calendar) select,
+  body.role-checkin .view:not(#view-checkin):not(#view-calendar) textarea,
+  body.role-checkin .view:not(#view-checkin):not(#view-calendar) [draggable="true"],
+  body.role-checkin .view:not(#view-checkin):not(#view-calendar) [contenteditable="true"],
+  body.role-checkin .view:not(#view-checkin):not(#view-calendar) [onmousedown],
+  body.role-checkin .view:not(#view-checkin):not(#view-calendar) [ontouchstart],
+  body.role-checkin .view:not(#view-checkin):not(#view-calendar) .meal-check,
+  body.role-checkin .view:not(#view-checkin):not(#view-calendar) .guest-chip {
     pointer-events: none !important;
     opacity: 0.55 !important;
     cursor: not-allowed !important;
@@ -825,6 +880,7 @@
   <div class="nav-tab" data-view="meals">🍽️ Meals</div>
   <div class="nav-tab" data-view="activities">🐠 Activity Options</div>
   <div class="nav-tab" data-view="events">📅 Events</div>
+  <div class="nav-tab" data-view="calendar">🗓️ Calendar</div>
   <div class="nav-tab" data-view="hotel">🏨 Hotel</div>
   <div class="nav-tab" data-view="chaperones">🤝 Chaperones</div>
   <div class="nav-tab" data-view="drivers">🚗 Drivers</div>
@@ -1481,7 +1537,7 @@
         <span style="font-size:0.75rem;color:var(--slate-light);font-weight:400;">Click any cell to toggle attendance</span>
       </div>
       <!-- Totals summary strip -->
-      <div id="mealTotalsStrip" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>
+      <div id="mealTotalsStrip" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:14px;"></div>
       <div class="table-wrapper">
         <table class="meals-table" id="mealsMatrix">
           <thead><tr id="mealsMatrixHeader"></tr></thead>
@@ -1519,7 +1575,7 @@
         <span style="font-size:0.75rem;color:var(--slate-light);font-weight:400;">Click any cell to toggle</span>
       </div>
       <!-- Totals summary strip -->
-      <div id="actTotalsStrip" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>
+      <div id="actTotalsStrip" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:14px;"></div>
       <div class="table-wrapper">
         <table id="activityMatrix">
           <thead><tr id="activityMatrixHeader"></tr></thead>
@@ -1542,6 +1598,34 @@
         <thead><tr><th>Date</th><th>Day</th><th>Start Time</th><th>Day Ref</th><th>Type</th><th>Description / Subject</th><th>Presenter</th><th>Responding</th><th>Location</th><th>Chaperone</th><th></th></tr></thead>
         <tbody id="eventsBody"></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- ──────────────── CALENDAR (Week / Day overview) ──────────────── -->
+  <div class="view" id="view-calendar">
+    <div class="section-title">Calendar</div>
+    <div class="section-desc">Overall view of the entire programme — sessions, meals, and activities together. Read-only; edit items in the Events, Meals, or Activity Options tabs.</div>
+
+    <div class="cal-toolbar">
+      <div class="cal-mode-switch">
+        <button class="cal-mode-btn active" id="calModeWeekBtn" onclick="calSetMode('week')">Week</button>
+        <button class="cal-mode-btn" id="calModeDayBtn" onclick="calSetMode('day')">Day</button>
+      </div>
+      <div class="cal-nav">
+        <button class="btn btn-outline btn-sm" onclick="calNav(-1)" id="calPrevBtn">‹ Prev</button>
+        <button class="btn btn-outline btn-sm" onclick="calToday()">Today</button>
+        <button class="btn btn-outline btn-sm" onclick="calNav(1)" id="calNextBtn">Next ›</button>
+      </div>
+      <div class="cal-range-label" id="calRangeLabel"></div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--slate);cursor:pointer;">
+        <input type="checkbox" id="calShowFlightsChk" checked onchange="calToggleFlights(this.checked)" style="cursor:pointer;">
+        ✈️ Show Flights
+      </label>
+      <div class="cal-legend" id="calLegend"></div>
+    </div>
+
+    <div class="cal-grid-wrapper">
+      <div class="cal-grid" id="calGrid"></div>
     </div>
   </div>
 
@@ -2371,6 +2455,7 @@ function _refreshView(viewName) {
     'meals':         renderMeals,
     'activities':    renderActivities,
     'events':        renderEvents,
+    'calendar':      renderCalendar,
     'hotel':         renderHotel,
     'chaperones':    renderChaperones,
     'drivers':       renderDrivers,
@@ -3104,6 +3189,7 @@ function showView(name) {
   if (name === 'meals')        renderMeals();
   if (name === 'activities')   renderActivities();
   if (name === 'events')       renderEvents();
+  if (name === 'calendar')     renderCalendar();
   if (name === 'hotel')        renderHotel();
   if (name === 'chaperones')   renderChaperones();
   if (name === 'drivers')      renderDrivers();
@@ -4982,7 +5068,7 @@ function renderMeals() {
   // Meal attendance matrix
   const header = document.getElementById('mealsMatrixHeader');
   header.innerHTML = '<th>#</th><th>Guest</th><th>Role</th>' + db.mealEvents.map(m =>
-    `<th class="activity-option-header" style="min-width:90px;"><div>${esc(m.name)}</div><div style="font-weight:400;font-size:0.65rem;opacity:0.85;">${fmtDate(m.date)}</div><div style="font-weight:400;font-size:0.65rem;opacity:0.75;">${fmtTime(m.time)}</div></th>`
+    `<th class="activity-option-header"><div>${esc(m.name)}</div><div style="font-weight:400;font-size:0.65rem;opacity:0.85;">${fmtDate(m.date)}</div><div style="font-weight:400;font-size:0.65rem;opacity:0.75;">${fmtTime(m.time)}</div></th>`
   ).join('');
 
   const matBody = document.getElementById('mealsMatrixBody');
@@ -5106,11 +5192,11 @@ function renderMeals() {
       ? db.mealEvents.map((m,mi) => {
           const hostCount = new Set(getHostsForMeal(mi).map(h => h.name.trim().toLowerCase())).size;
           return `
-          <div style="background:var(--navy);color:white;border-radius:8px;padding:8px 14px;min-width:120px;text-align:center;">
+          <div style="background:var(--navy);color:white;border-radius:8px;padding:10px 12px;text-align:center;display:flex;flex-direction:column;justify-content:center;min-height:78px;">
             <div style="font-size:1.4rem;font-weight:700;font-family:'Playfair Display',serif;color:var(--gold-light);">${mealTotals[mi]}</div>
-            <div style="font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;opacity:0.8;margin-top:2px;">${esc(m.name)}</div>
-            <div style="font-size:0.65rem;opacity:0.55;">${fmtDate(m.date)}</div>
-            ${hostCount > 0 ? `<div style="font-size:0.62rem;color:#7c3aed;margin-top:3px;opacity:0.9;">+${hostCount} host${hostCount!==1?'s':''}</div>` : ''}
+            <div style="font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;opacity:0.85;margin-top:2px;line-height:1.3;word-break:break-word;">${esc(m.name)}</div>
+            <div style="font-size:0.65rem;opacity:0.55;margin-top:2px;">${fmtDate(m.date)}</div>
+            ${hostCount > 0 ? `<div style="font-size:0.62rem;color:#c9a4ff;margin-top:3px;opacity:0.9;">+${hostCount} host${hostCount!==1?'s':''}</div>` : ''}
           </div>`;
         }).join('')
       : '<div style="font-size:0.82rem;color:var(--slate-light);">No meal events yet.</div>';
@@ -5216,7 +5302,7 @@ function renderActivities() {
   // Matrix
   const header = document.getElementById('activityMatrixHeader');
   header.innerHTML = '<th>#</th><th>Name</th><th>Role</th>' + db.activityOptions.map(a =>
-    `<th class="activity-option-header" style="min-width:110px;"><div>${esc(a.name)}</div><div style="font-weight:400;font-size:0.65rem;opacity:0.85;">${fmtDate(a.date)}</div></th>`
+    `<th class="activity-option-header"><div>${esc(a.name)}</div><div style="font-weight:400;font-size:0.65rem;opacity:0.85;">${fmtDate(a.date)}</div></th>`
   ).join('');
 
   const matBody = document.getElementById('activityMatrixBody');
@@ -5293,10 +5379,10 @@ function renderActivities() {
   if (actStrip) {
     actStrip.innerHTML = db.activityOptions.length
       ? db.activityOptions.map((a,ai) => `
-          <div style="background:var(--navy);color:white;border-radius:8px;padding:8px 14px;min-width:110px;text-align:center;">
+          <div style="background:var(--navy);color:white;border-radius:8px;padding:10px 12px;text-align:center;display:flex;flex-direction:column;justify-content:center;min-height:78px;">
             <div style="font-size:1.4rem;font-weight:700;font-family:'Playfair Display',serif;color:var(--gold-light);">${actTotals[ai]}</div>
-            <div style="font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;opacity:0.8;margin-top:2px;">${esc(a.name)}</div>
-            <div style="font-size:0.65rem;opacity:0.55;">${fmtDate(a.date)}</div>
+            <div style="font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;opacity:0.85;margin-top:2px;line-height:1.3;word-break:break-word;">${esc(a.name)}</div>
+            <div style="font-size:0.65rem;opacity:0.55;margin-top:2px;">${fmtDate(a.date)}</div>
           </div>`).join('')
       : '<div style="font-size:0.82rem;color:var(--slate-light);">No activities yet.</div>';
   }
@@ -5496,6 +5582,207 @@ function saveEventRow() {
 async function deleteEventRow(i) {
   if (!await confirmDelete('Remove Event', 'Remove this event from the programme? This cannot be undone.')) return;
   db.events.splice(i,1); saveDB(); renderEvents();
+}
+
+// ═══════════════════════════════════════════
+//  CALENDAR — Week / Day overview of the whole programme
+//  Reads directly from db.events (the single source of truth).
+//  Read-only: edits are still made in Events / Meals / Activity Options.
+// ═══════════════════════════════════════════
+let _calMode   = 'week';   // 'week' | 'day'
+let _calAnchor = null;     // Date — anchors the visible week/day
+let _calShowFlights = true; // include guest arrival/departure flights?
+
+function _calBuildFlightItems() {
+  const items = [];
+  (db.guests || []).forEach(g => {
+    if (g.arr_date) {
+      const bits = [g.arr_flight, g.arr_terminal].filter(Boolean).join(' • ');
+      items.push({
+        date: g.arr_date, start: g.arr_time || '', type: 'Arrival',
+        desc: `✈️ ${g.name} arriving${g.arr_from ? ' from ' + g.arr_from : ''}`,
+        location: bits
+      });
+    }
+    if (g.dep_date) {
+      const bits = [g.dep_flight, g.dep_terminal].filter(Boolean).join(' • ');
+      items.push({
+        date: g.dep_date, start: g.dep_time || '', type: 'Departure',
+        desc: `🛫 ${g.name} departing${g.dep_to ? ' to ' + g.dep_to : ''}`,
+        location: bits
+      });
+    }
+  });
+  return items;
+}
+
+function _calIsoStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function _calParseIso(str) {
+  const [y,m,d] = str.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function _calAddDays(date, n) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+function _calStartOfWeek(date) {
+  // Week starts Monday
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun..6=Sat
+  const diff = (day === 0 ? -6 : 1 - day);
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+function _calHourLabel(h) {
+  const ampm = h < 12 ? 'AM' : 'PM';
+  let hh = h % 12; if (hh === 0) hh = 12;
+  return `${hh}${ampm}`;
+}
+
+const CAL_TYPE_COLORS = {
+  Meal:      '#e8963c',
+  Activity:  '#3b8a5e',
+  Session:   '#3b5bdb',
+  Arrival:   '#8a5ec9',
+  Departure: '#8a5ec9'
+};
+
+function calSetMode(mode) {
+  _calMode = mode;
+  document.getElementById('calModeWeekBtn').classList.toggle('active', mode === 'week');
+  document.getElementById('calModeDayBtn').classList.toggle('active', mode === 'day');
+  renderCalendar();
+}
+function calNav(deltaUnits) {
+  if (!_calAnchor) _calAnchor = new Date();
+  _calAnchor = _calAddDays(_calAnchor, _calMode === 'week' ? deltaUnits * 7 : deltaUnits);
+  renderCalendar();
+}
+function calToday() {
+  _calAnchor = new Date();
+  renderCalendar();
+}
+function calToggleFlights(checked) {
+  _calShowFlights = !!checked;
+  renderCalendar();
+}
+
+function renderCalendar() {
+  syncDerivedArrays();
+
+  if (!_calAnchor) {
+    // Default to the week/day of the earliest scheduled event, since the
+    // programme is usually in the future relative to "today".
+    const dates = (db.events || []).map(e => e.date).filter(Boolean).sort();
+    _calAnchor = dates.length ? _calParseIso(dates[0]) : new Date();
+  }
+
+  // Legend
+  const legendEl = document.getElementById('calLegend');
+  if (legendEl) {
+    legendEl.innerHTML = Object.keys(CAL_TYPE_COLORS).map(t =>
+      `<span><span class="cal-legend-dot" style="background:${CAL_TYPE_COLORS[t]};"></span>${t}</span>`
+    ).join('') + `<span><span class="cal-legend-dot" style="background:var(--slate);"></span>Other</span>`;
+  }
+
+  if (_calMode === 'week') {
+    _calRenderGrid(_calStartOfWeek(_calAnchor), 7);
+  } else {
+    _calRenderGrid(_calAnchor, 1);
+  }
+}
+
+function _calRenderGrid(startDate, numDays) {
+  const days = [];
+  for (let i = 0; i < numDays; i++) days.push(_calAddDays(startDate, i));
+
+  // Range label
+  const labelEl = document.getElementById('calRangeLabel');
+  if (labelEl) {
+    if (numDays === 1) {
+      labelEl.textContent = days[0].toLocaleDateString('en-SG', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    } else {
+      const a = days[0], b = days[days.length-1];
+      const sameMonth = a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+      labelEl.textContent = sameMonth
+        ? `${a.getDate()} – ${b.getDate()} ${a.toLocaleDateString('en-SG',{month:'long',year:'numeric'})}`
+        : `${a.toLocaleDateString('en-SG',{day:'numeric',month:'short'})} – ${b.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'})}`;
+    }
+  }
+
+  const HOUR_START = 0, HOUR_END = 24; // full 24-hour day — flights land/depart at any hour
+  const hours = [];
+  for (let h = HOUR_START; h < HOUR_END; h++) hours.push(h);
+
+  const dayKeys = days.map(_calIsoStr);
+  const bucket = {}; // `${dayIdx}_${hour}` or `${dayIdx}_allday` -> [events]
+  dayKeys.forEach((_, di) => {
+    hours.forEach(h => { bucket[`${di}_${h}`] = []; });
+    bucket[`${di}_allday`] = [];
+  });
+
+  const allItems = (db.events || []).concat(_calShowFlights ? _calBuildFlightItems() : []);
+
+  allItems.forEach(ev => {
+    const di = dayKeys.indexOf(ev.date);
+    if (di === -1) return; // outside the visible range
+    let h = null;
+    if (ev.start) {
+      const m = ev.start.match(/^(\d{1,2}):(\d{2})/);
+      if (m) h = parseInt(m[1], 10);
+    }
+    if (h === null || h < HOUR_START || h >= HOUR_END) {
+      bucket[`${di}_allday`].push(ev);
+    } else {
+      bucket[`${di}_${h}`].push(ev);
+    }
+  });
+
+  function chip(ev) {
+    const color = CAL_TYPE_COLORS[ev.type] || 'var(--slate)';
+    return `<div class="cal-chip" style="border-left-color:${color};" title="${esc(ev.type||'')}">
+      <div class="cal-chip-time">${ev.start ? fmtTime(ev.start) : ''}</div>
+      <div class="cal-chip-title">${esc(ev.desc || '(untitled)')}</div>
+      ${ev.location ? `<div class="cal-chip-loc">📍 ${esc(ev.location)}</div>` : ''}
+    </div>`;
+  }
+
+  const gridEl = document.getElementById('calGrid');
+  if (!gridEl) return;
+  gridEl.style.gridTemplateColumns = `70px repeat(${numDays}, minmax(120px, 1fr))`;
+
+  let html = '';
+  html += `<div class="cal-cell cal-corner"></div>`;
+  const todayStr = _calIsoStr(new Date());
+  days.forEach(d => {
+    const isToday = _calIsoStr(d) === todayStr;
+    html += `<div class="cal-cell cal-daylabel ${isToday ? 'cal-today' : ''}">
+      <div class="cal-daylabel-dow">${d.toLocaleDateString('en-SG',{weekday:'short'})}</div>
+      <div class="cal-daylabel-date">${d.getDate()} ${d.toLocaleDateString('en-SG',{month:'short'})}</div>
+    </div>`;
+  });
+
+  html += `<div class="cal-cell cal-timelabel">All-day</div>`;
+  days.forEach((d, di) => {
+    html += `<div class="cal-cell cal-slot">${bucket[`${di}_allday`].map(chip).join('')}</div>`;
+  });
+
+  hours.forEach(h => {
+    html += `<div class="cal-cell cal-timelabel" data-hour="${h}">${_calHourLabel(h)}</div>`;
+    days.forEach((d, di) => {
+      html += `<div class="cal-cell cal-slot">${bucket[`${di}_${h}`].map(chip).join('')}</div>`;
+    });
+  });
+
+  gridEl.innerHTML = html;
+
+  // Default scroll position: start around 6 AM rather than midnight, since
+  // that's where most of the day's activity begins.
+  const anchorCell = gridEl.querySelector('[data-hour="6"]');
+  if (anchorCell) anchorCell.scrollIntoView({ block: 'start' });
 }
 
 // ═══════════════════════════════════════════
