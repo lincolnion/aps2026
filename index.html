@@ -593,6 +593,41 @@
     font-family: 'Inter', sans-serif; transition: all 0.15s; margin-left: 8px;
   }
   .lock-btn:hover { background: rgba(255,255,255,0.2); color: white; }
+  .role-badge {
+    font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 3px 9px; border-radius: 20px; margin-left: 10px; white-space: nowrap;
+  }
+  .role-badge.admin   { background: rgba(255,215,120,0.18); color: #e6c266; border:1px solid rgba(255,215,120,0.4); }
+  .role-badge.checkin { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.75); border:1px solid rgba(255,255,255,0.25); }
+
+  /* ── VIEW-ONLY ROLE LOCKDOWN ──
+     When body has .role-checkin, every view EXCEPT #view-checkin becomes
+     browsable but non-interactive: buttons/inputs/selects/textareas/drag
+     handles are disabled and dimmed. The Check-In tab itself is left fully
+     functional so front-desk staff can check guests in / add walk-ins. */
+  body.role-checkin .nav-tab[data-view="add-guest"] { display: none !important; }
+  body.role-checkin .view:not(#view-checkin) button,
+  body.role-checkin .view:not(#view-checkin) input,
+  body.role-checkin .view:not(#view-checkin) select,
+  body.role-checkin .view:not(#view-checkin) textarea,
+  body.role-checkin .view:not(#view-checkin) [draggable="true"],
+  body.role-checkin .view:not(#view-checkin) [contenteditable="true"],
+  body.role-checkin .view:not(#view-checkin) [onmousedown],
+  body.role-checkin .view:not(#view-checkin) [ontouchstart],
+  body.role-checkin .view:not(#view-checkin) .meal-check,
+  body.role-checkin .view:not(#view-checkin) .guest-chip {
+    pointer-events: none !important;
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+  }
+  body.role-checkin #guestModal button:not(.modal-close),
+  body.role-checkin #guestModal input,
+  body.role-checkin #guestModal select,
+  body.role-checkin #guestModal textarea {
+    pointer-events: none !important;
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+  }
   /* ── CHECK-IN ── */
   .checkin-card {
     background: white; border: 1.5px solid var(--border);
@@ -775,6 +810,7 @@
 <header class="app-header">
   <div class="logo">APS 2026 <span class="subtitle">/ Guest Management</span></div>
   <div class="header-spacer"></div>
+  <span class="role-badge" id="roleBadge" style="display:none;"></span>
   <div class="guest-count-badge" id="headerGuestCount">Loading…</div>
   <button class="lock-btn" onclick="lockApp()" title="Lock the app">🔒 Lock</button>
 </header>
@@ -7312,23 +7348,68 @@ function confirmDeleteCancel() {
   if (_confirmDeleteResolve) { _confirmDeleteResolve(false); _confirmDeleteResolve = null; }
 }
 
-// ── Set your team password here ──────────────
-const APP_PASSWORD = 'PYLJJ';
+// ── Set your team passwords here ──────────────
+// 'checkin' role: can browse every tab in read-only/view mode, and has full
+//                 use of the Check-In tab (check guests in, add walk-ins).
+// 'admin'   role: full access — can add/edit/delete anything.
+const APP_PASSWORDS = {
+  'PYLJJ':    'checkin',
+  'linc5191': 'admin'
+};
+// ─────────────────────────────────────────────
+// NOTE ON SECURITY: this role gate is enforced in the browser UI only.
+// Firestore rules for this project currently allow open read/write to
+// anyone with the project's (public) API key, independent of this password
+// screen. That means this password protects against accidental/casual
+// misuse by staff, but is not a substitute for real database-level access
+// control. Ask Claude if you'd like the Firestore rules hardened too.
 // ─────────────────────────────────────────────
 
 const SESSION_KEY = 'aps2026_auth';
+const ROLE_KEY    = 'aps2026_role';
 
 function isUnlocked() {
   return sessionStorage.getItem(SESSION_KEY) === 'true';
+}
+
+function currentRole() {
+  return sessionStorage.getItem(ROLE_KEY) || 'checkin';
+}
+
+function applyRoleRestrictions() {
+  const role  = currentRole();
+  const badge = document.getElementById('roleBadge');
+  document.body.classList.toggle('role-checkin', role === 'checkin');
+  document.body.classList.toggle('role-admin', role === 'admin');
+  if (badge) {
+    badge.style.display = 'inline-block';
+    if (role === 'admin') {
+      badge.textContent = '🔑 Admin — Full Access';
+      badge.className = 'role-badge admin';
+    } else {
+      badge.textContent = '👁 View + Check-In Only';
+      badge.className = 'role-badge checkin';
+    }
+  }
+  // Front-desk/check-in logins should land on the Check-In tab, not
+  // whichever tab happened to be saved from a previous admin session.
+  if (role === 'checkin') {
+    const savedTab = localStorage.getItem('aps2026_active_tab');
+    if (savedTab === 'add-guest' || !savedTab) {
+      showView('checkin');
+    }
+  }
 }
 
 function checkPassword() {
   const input = document.getElementById('pwInput');
   const errEl = document.getElementById('pwError');
   const val   = input.value.trim();
+  const role  = APP_PASSWORDS[val];
 
-  if (val === APP_PASSWORD) {
+  if (role) {
     sessionStorage.setItem(SESSION_KEY, 'true');
+    sessionStorage.setItem(ROLE_KEY, role);
     const overlay = document.getElementById('pwOverlay');
     overlay.classList.add('hidden');
     setTimeout(() => { overlay.style.display = 'none'; }, 350);
@@ -7347,6 +7428,7 @@ function checkPassword() {
 function lockApp() {
   if (!confirm('Lock the app? You will need to enter the password again.')) return;
   sessionStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(ROLE_KEY);
   location.reload();
 }
 
@@ -7379,6 +7461,7 @@ async function initFirebase() {
 
     loadDB();
     await _loadFromFirestore();
+    applyRoleRestrictions();
 
   } catch(e) {
     console.error('Firebase init failed, falling back to localStorage:', e);
@@ -7386,6 +7469,7 @@ async function initFirebase() {
     migrateDB();
     const savedTab = localStorage.getItem('aps2026_active_tab') || 'guest-list';
     showView(savedTab === 'add-guest' ? 'guest-list' : savedTab);
+    applyRoleRestrictions();
   }
 })();
 }
@@ -7416,6 +7500,7 @@ if (isUnlocked()) {
   // Already logged in — hide overlay immediately and start app
   const overlay = document.getElementById('pwOverlay');
   overlay.style.display = 'none';
+  applyRoleRestrictions();
   initFirebase();
 } else {
   // Show password screen — focus input
