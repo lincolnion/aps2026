@@ -1411,6 +1411,7 @@
         oninput="saveApiKey(this.value)">
       <button class="btn btn-gold btn-sm" onclick="refreshAllFlightStatus('arr')" id="refreshArrBtn">⟳ Refresh Status</button>
       <span id="arrStatusMsg" style="font-size:0.72rem;color:rgba(255,255,255,0.55);"></span>
+      <div style="flex-basis:100%;font-size:0.68rem;color:rgba(255,255,255,0.45);">Live tracking (On Time / Delayed / En Route / Landed) only becomes available roughly 24h before each flight — this updates automatically as that window opens, no need to keep clicking Refresh.</div>
     </div>
 
     <div class="toolbar">
@@ -1445,6 +1446,7 @@
       <span style="font-size:0.72rem;color:rgba(255,255,255,0.6);">Using same AirLabs API key as Arrivals tab</span>
       <button class="btn btn-gold btn-sm" onclick="refreshAllFlightStatus('dep')" id="refreshDepBtn">⟳ Refresh Status</button>
       <span id="depStatusMsg" style="font-size:0.72rem;color:rgba(255,255,255,0.55);"></span>
+      <div style="flex-basis:100%;font-size:0.68rem;color:rgba(255,255,255,0.45);">Live tracking only becomes available roughly 24h before each flight — this updates automatically as that window opens.</div>
     </div>
 
     <div class="toolbar">
@@ -4770,6 +4772,8 @@ async function fetchFlightStatus(flightIata) {
       status:        r.status      || '',
       dep_time:      r.dep_time    || '',
       arr_time:      r.arr_time    || '',
+      dep_estimated: r.dep_estimated || r.dep_actual || '',
+      arr_estimated: r.arr_estimated || r.arr_actual || '',
       dep_delayed:   r.dep_delayed || 0,
       arr_delayed:   r.arr_delayed || 0,
       dep_terminal:  r.dep_terminal|| '',
@@ -4800,11 +4804,37 @@ function flightDateMatches(apiFlightDate, scheduledDate) {
   return diffDays <= 1; // allow 1 day tolerance for overnight/date-line crossings
 }
 
+// Live tracking (ADS-B/gate assignment) only exists once an aircraft is
+// actually assigned to operate a specific flight instance — airlines
+// typically lock this in ~24h before departure. No provider can show
+// On Time/Delayed/En Route/Landed before that, for any flight, on any plan.
+function _isNearFlightWindow(dateStr) {
+  if (!dateStr) return false;
+  const days = Math.abs((new Date(dateStr+'T00:00:00') - new Date(new Date().toDateString())) / 86400000);
+  return days <= 1;
+}
+
+const AUTO_REFRESH_INTERVAL_MS = 15 * 60 * 1000; // check at most every 15 min per leg
+
+// Silently re-check only flights whose tracking window has just opened
+// (today/tomorrow), so status fills in on its own without anyone needing
+// to remember to hit "Refresh Status" on the right day.
+async function maybeAutoRefreshFlights(leg) {
+  const key = getAirlabsKey();
+  if (!key) return;
+  const throttleKey = `airlabs_auto_refresh_${leg}`;
+  const last = parseInt(localStorage.getItem(throttleKey) || '0', 10);
+  if (Date.now() - last < AUTO_REFRESH_INTERVAL_MS) return;
+  localStorage.setItem(throttleKey, String(Date.now())); // set first — prevents re-entrant loop via the render() call at the end of refreshAllFlightStatus
+  await refreshAllFlightStatus(leg, { silent: true, onlyNearWindow: true });
+}
+
 // Refresh all unique flights for arrivals or departures
-async function refreshAllFlightStatus(leg) {
+async function refreshAllFlightStatus(leg, opts) {
+  opts = opts || {};
   const key = getAirlabsKey();
   if (!key) {
-    showToast('⚠ Paste your AirLabs API key in the bar above first', 'error');
+    if (!opts.silent) showToast('⚠ Paste your AirLabs API key in the bar above first', 'error');
     return;
   }
 
@@ -4812,16 +4842,26 @@ async function refreshAllFlightStatus(leg) {
   const msgId = leg === 'arr' ? 'arrStatusMsg'  : 'depStatusMsg';
   const btn   = document.getElementById(btnId);
   const msg   = document.getElementById(msgId);
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Fetching…'; }
-  if (msg) msg.textContent = '';
+  if (!opts.silent) {
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Fetching…'; }
+    if (msg) msg.textContent = '';
+  }
 
-  // Collect unique flight numbers for this leg
+  // Collect unique flight numbers for this leg — optionally restricted to
+  // guests whose flight date is within the ~24h tracking window, so silent
+  // auto-refreshes don't waste API calls on flights with no live data yet.
   const flightField = leg === 'arr' ? 'arr_flight' : 'dep_flight';
-  const unique = [...new Set(db.guests.map(g => normaliseFlightIata(g[flightField])).filter(Boolean))];
+  const dateField   = leg === 'arr' ? 'arr_date'   : 'dep_date';
+  const relevantGuests = opts.onlyNearWindow
+    ? db.guests.filter(g => _isNearFlightWindow(g[dateField]))
+    : db.guests;
+  const unique = [...new Set(relevantGuests.map(g => normaliseFlightIata(g[flightField])).filter(Boolean))];
 
   if (!unique.length) {
-    if (btn) { btn.disabled = false; btn.textContent = '⟳ Refresh Status'; }
-    if (msg) msg.textContent = 'No flights to check.';
+    if (!opts.silent) {
+      if (btn) { btn.disabled = false; btn.textContent = '⟳ Refresh Status'; }
+      if (msg) msg.textContent = opts.onlyNearWindow ? 'No flights within the 24h tracking window yet.' : 'No flights to check.';
+    }
     return;
   }
 
@@ -4837,79 +4877,147 @@ async function refreshAllFlightStatus(leg) {
     } catch(e) { errors++; }
     // Small delay between requests
     await new Promise(r => setTimeout(r, 400));
-    if (msg) msg.textContent = `${done}/${unique.length} fetched…`;
+    if (!opts.silent && msg) msg.textContent = `${done}/${unique.length} fetched…`;
   }
 
-  if (btn) { btn.disabled = false; btn.textContent = '⟳ Refresh Status'; }
-  const lastUpdate = new Date().toLocaleTimeString('en-SG', {hour:'2-digit', minute:'2-digit'});
-  if (msg) msg.textContent = `✓ Updated ${done} flight${done!==1?'s':''} at ${lastUpdate}${errors?' · ⚠ '+errors+' failed':''}`;
+  if (!opts.silent) {
+    if (btn) { btn.disabled = false; btn.textContent = '⟳ Refresh Status'; }
+    const lastUpdate = new Date().toLocaleTimeString('en-SG', {hour:'2-digit', minute:'2-digit'});
+    if (msg) msg.textContent = `✓ Updated ${done} flight${done!==1?'s':''} at ${lastUpdate}${errors?' · ⚠ '+errors+' failed':''}`;
+  }
 
   if (leg === 'arr') renderArrivals(); else renderDepartures();
 }
 
 // Render a live status badge — scheduledDate is the guest's booked flight date
-function liveStatusBadge(flightRaw, leg, scheduledDate) {
-  if (!flightRaw) return '<td style="color:var(--slate-light);font-size:0.72rem;">—</td>';
+// guestId enables cross-referencing the app's own Check-In log / manual
+// departure marks, which are more reliable ground truth than any external
+// flight API for confirming a guest actually arrived or departed.
+// Categories shown (matching standard airport FIDS conventions):
+//   1) Scheduled  — flight is in the future, no live tracking data yet
+//   2) On Time    — flight is tracked and running on schedule (delay ~0)
+//   3) Delayed    — flight is tracked and running late, shows +Xm
+//   4) En Route   — flight is airborne, shows live ETA
+//   5) Landed     — flight has arrived
+//   (+ Cancelled / Diverted shown in red when applicable)
+function liveStatusBadge(flightRaw, leg, scheduledDate, guestId) {
+  const badge = (label, bg, color, bold) =>
+    `<span style="display:inline-flex;align-items:center;background:${bg};color:${color};font-size:0.7rem;font-weight:${bold?'700':'600'};padding:3px 8px;border-radius:5px;white-space:nowrap;">${label}</span>`;
+
+  // ── GROUND TRUTH FIRST: your own team's check-in / manual marks beat any
+  // external flight API, since they confirm the guest actually arrived, not
+  // just that the plane did. This applies regardless of what AirLabs says,
+  // and regardless of whether the flight date is in the past or future. ──
+  if (guestId) {
+    if (leg === 'arr' && isCheckedIn('__arrival__', `${guestId}|guest|0`)) {
+      const t = getCheckinTime('__arrival__', `${guestId}|guest|0`);
+      const tStr = t ? new Date(t).toLocaleString('en-SG',{dateStyle:'short',timeStyle:'short'}) : '';
+      return `<td>${badge('✓ Arrived','rgba(45,122,79,0.2)','var(--green)', true)}
+        <div style="font-size:0.6rem;color:var(--slate-light);margin-top:1px;">Checked in${tStr?' '+tStr:''}</div>
+      </td>`;
+    }
+    if (leg === 'dep' && (db.guests.find(g=>g.id===guestId)||{}).dep_manual_mark) {
+      const t = db.guests.find(g=>g.id===guestId).dep_manual_mark;
+      const tStr = new Date(t).toLocaleString('en-SG',{dateStyle:'short',timeStyle:'short'});
+      return `<td>${badge('🛫 Departed','rgba(45,122,79,0.2)','var(--green)', true)}
+        <div style="font-size:0.6rem;color:var(--slate-light);margin-top:1px;">Marked ${tStr}</div>
+        <button onclick="toggleManualDeparted('${guestId}')" style="font-size:0.6rem;color:var(--slate-light);background:none;border:none;text-decoration:underline;cursor:pointer;padding:1px 0;">undo</button>
+      </td>`;
+    }
+  }
+
+  const markBtn = guestId
+    ? (leg === 'arr'
+        ? `<button onclick="doCheckin('__arrival__','${guestId}|guest|0')" style="display:block;margin-top:3px;font-size:0.6rem;color:var(--blue);background:none;border:none;text-decoration:underline;cursor:pointer;padding:0;">Mark Arrived</button>`
+        : `<button onclick="toggleManualDeparted('${guestId}')" style="display:block;margin-top:3px;font-size:0.6rem;color:var(--blue);background:none;border:none;text-decoration:underline;cursor:pointer;padding:0;">Mark Departed</button>`)
+    : '';
+
+  if (!flightRaw) return `<td style="color:var(--slate-light);font-size:0.72rem;">—${markBtn}</td>`;
   const norm = normaliseFlightIata(flightRaw);
   const d    = _flightCache[norm];
   if (!d) {
-    return `<td><span style="font-size:0.7rem;color:var(--slate-light);">—</span></td>`;
+    return `<td><span style="font-size:0.7rem;color:var(--slate-light);">—</span>${markBtn}</td>`;
   }
 
-  // ── Date validation: AirLabs returns the nearest matching flight ──────────
-  // If the scheduled date doesn't match the API date, this is a different day's
-  // flight (e.g. today's SQ37, not the July 2026 SQ37).
-  // In that case show Scheduled with the booked time — don't mislead with stale status.
+  // ── 1) SCHEDULED (future / no live data yet) ──────────────────────────────
+  // AirLabs returns the current/most-recent flight — if the event is days/months
+  // away it will return yesterday's or today's flight with the wrong status.
   const dateValid = flightDateMatches(d.flight_date, scheduledDate);
   if (!dateValid && scheduledDate) {
-    // Future flight — show Scheduled with note
-    const daysUntil = scheduledDate
-      ? Math.ceil((new Date(scheduledDate+'T00:00:00') - new Date()) / 86400000)
-      : null;
-    const note = daysUntil !== null && daysUntil > 0
-      ? `<div style="font-size:0.62rem;color:var(--slate-light);margin-top:1px;">in ${daysUntil}d</div>`
-      : '';
-    return `<td>
-      <span style="display:inline-flex;align-items:center;background:rgba(59,91,219,0.08);color:var(--blue);font-size:0.7rem;font-weight:600;padding:3px 8px;border-radius:5px;">
-        Scheduled
-      </span>${note}
+    const daysUntil = Math.ceil((new Date(scheduledDate+'T00:00:00') - new Date()) / 86400000);
+    if (daysUntil > 0) {
+      const note = `<div style="font-size:0.62rem;color:var(--slate-light);margin-top:1px;">in ${daysUntil}d</div>`;
+      return `<td>${badge('Scheduled','rgba(59,91,219,0.08)','var(--blue)')}${note}</td>`;
+    }
+    // Flight date has already passed, but AirLabs' /flight endpoint only
+    // returns today's occurrence of a flight number — it can't confirm what
+    // actually happened on a past date. Offer the one-click ground-truth
+    // mark right here instead of just saying "check elsewhere."
+    return `<td>${badge('Not tracked','var(--border)','var(--slate)')}
+      <div style="font-size:0.6rem;color:var(--slate-light);margin-top:1px;">date passed</div>${markBtn}
     </td>`;
   }
 
-  const statusMap = {
-    'scheduled':   { label:'Scheduled',  bg:'rgba(59,91,219,0.1)',  color:'var(--blue)'  },
-    'en-route':    { label:'En Route ✈', bg:'rgba(45,122,79,0.12)', color:'var(--green)' },
-    'landed':      { label:'Landed ✓',   bg:'rgba(45,122,79,0.2)',  color:'var(--green)', bold:true },
-    'cancelled':   { label:'Cancelled',  bg:'rgba(197,48,48,0.12)', color:'var(--red)'   },
-    'diverted':    { label:'Diverted',   bg:'rgba(197,48,48,0.12)', color:'var(--red)'   },
-    'delayed':     { label:'Delayed',    bg:'rgba(230,81,0,0.12)',  color:'#e65100'      },
-    'active':      { label:'Active ✈',  bg:'rgba(45,122,79,0.12)', color:'var(--green)' },
-    'incident':    { label:'Incident',   bg:'rgba(197,48,48,0.2)',  color:'var(--red)'   },
-  };
-  const s  = (d.status || '').toLowerCase();
-  const st = statusMap[s] || { label: d.status || '?', bg:'var(--border)', color:'var(--slate)' };
+  const s          = (d.status || '').toLowerCase();
+  const delay      = leg === 'arr' ? d.arr_delayed   : d.dep_delayed;
+  const gate       = leg === 'arr' ? d.arr_gate      : d.dep_gate;
+  const schedTime  = leg === 'arr' ? d.arr_time      : d.dep_time;
+  const estTime    = leg === 'arr' ? d.arr_estimated : d.dep_estimated;
+  const isDelayed  = delay && delay > 0;
 
-  const delay = leg === 'arr' ? d.arr_delayed : d.dep_delayed;
-  const delayBadge = delay && delay > 0
-    ? `<span style="font-size:0.65rem;color:#e65100;margin-left:4px;">+${delay}m</span>`
-    : '';
-
-  const gate = leg === 'arr' ? d.arr_gate : d.dep_gate;
   const gateBadge = gate
-    ? `<span style="font-size:0.65rem;color:var(--slate);margin-left:4px;">Gate ${esc(gate)}</span>`
-    : '';
+    ? `<span style="font-size:0.65rem;color:var(--slate);margin-left:4px;">Gate ${esc(gate)}</span>` : '';
+  const timeHHMM = (t) => t ? t.slice(11,16) : '';
 
-  const actualTime = leg === 'arr' ? d.arr_time : d.dep_time;
-  const timeNote = actualTime
-    ? `<div style="font-size:0.65rem;color:var(--slate-light);margin-top:2px;">${actualTime.slice(11,16)||''}</div>`
-    : '';
+  let mainBadge, subLine;
+
+  if (s === 'cancelled') {
+    mainBadge = badge('Cancelled','rgba(197,48,48,0.12)','var(--red)');
+    subLine = '';
+  } else if (s === 'diverted') {
+    mainBadge = badge('Diverted','rgba(197,48,48,0.12)','var(--red)');
+    subLine = '';
+  } else if (s === 'landed') {
+    // 5) LANDED
+    mainBadge = badge('Landed ✓','rgba(45,122,79,0.2)','var(--green)', true);
+    subLine = schedTime ? `Arrived ${timeHHMM(schedTime)}` : '';
+  } else if (s === 'active' || s === 'en-route') {
+    // 4) EN ROUTE — show live ETA
+    mainBadge = badge('En Route ✈','rgba(45,122,79,0.12)','var(--green)');
+    subLine = estTime ? `ETA ${timeHHMM(estTime)}` : (schedTime ? `ETA ${timeHHMM(schedTime)}` : '');
+    if (isDelayed) subLine += subLine ? ` · +${delay}m` : `+${delay}m`;
+  } else if (isDelayed) {
+    // 3) DELAYED (still scheduled/pre-departure but running late)
+    mainBadge = badge(`Delayed +${delay}m`,'rgba(230,81,0,0.12)','#e65100');
+    subLine = estTime ? `New ETA ${timeHHMM(estTime)}` : '';
+  } else if (s === 'scheduled') {
+    // 2) ON TIME (tracked, not yet departed, no delay reported)
+    mainBadge = badge('On Time','rgba(45,122,79,0.1)','var(--green)');
+    subLine = schedTime ? timeHHMM(schedTime) : '';
+  } else if (s === 'incident') {
+    mainBadge = badge('Incident','rgba(197,48,48,0.2)','var(--red)');
+    subLine = '';
+  } else {
+    mainBadge = badge(d.status || '?', 'var(--border)', 'var(--slate)');
+    subLine = '';
+  }
 
   return `<td>
-    <span style="display:inline-flex;align-items:center;background:${st.bg};color:${st.color};font-size:0.7rem;font-weight:${st.bold?'700':'600'};padding:3px 8px;border-radius:5px;white-space:nowrap;">
-      ${st.label}
-    </span>${delayBadge}${gateBadge}
-    ${timeNote}
+    ${mainBadge}${gateBadge}
+    ${subLine ? `<div style="font-size:0.65rem;color:var(--slate-light);margin-top:2px;">${esc(subLine)}</div>` : ''}
   </td>`;
+}
+
+function toggleManualDeparted(guestId) {
+  const g = db.guests.find(x => x.id === guestId);
+  if (!g) return;
+  if (g.dep_manual_mark) {
+    delete g.dep_manual_mark;
+  } else {
+    g.dep_manual_mark = new Date().toISOString();
+  }
+  saveDB();
+  renderDepartures();
 }
 
 function renderArrivals() {
@@ -4935,7 +5043,7 @@ function renderArrivals() {
       <td style="font-size:0.78rem;">${esc(g.arr_carrier)||'—'}</td>
       <td style="font-size:0.78rem;">${esc(g.arr_from)||'—'}</td>
       <td>${terminalBadge(g.arr_terminal, !!g.arr_flight)}</td>
-      ${liveStatusBadge(g.arr_flight, 'arr', g.arr_date)}
+      ${liveStatusBadge(g.arr_flight, 'arr', g.arr_date, g.id)}
       <td class="td-name">${esc(g.name)}</td>
       <td style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
       <td style="font-size:0.78rem;">${g.arr_chaperone_id ? esc(chapName(g.arr_chaperone_id)) : '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;white-space:nowrap;">🤝 ?</span>'}</td>
@@ -4949,6 +5057,9 @@ function renderArrivals() {
       })()}</td>
       <td style="font-size:0.75rem;color:var(--slate-light);">${esc(g.arr_remarks)||'—'}</td>
     </tr>`).join('');
+
+  // Silently fill in live status as each flight's ~24h tracking window opens
+  setTimeout(() => maybeAutoRefreshFlights('arr'), 50);
 }
 
 function renderDepartures() {
@@ -4970,7 +5081,7 @@ function renderDepartures() {
       <td style="font-size:0.78rem;">${esc(g.dep_carrier)||'—'}</td>
       <td style="font-size:0.78rem;">${esc(g.dep_to)||'—'}</td>
       <td>${terminalBadge(g.dep_terminal, !!g.dep_flight)}</td>
-      ${liveStatusBadge(g.dep_flight, 'dep', g.dep_date)}
+      ${liveStatusBadge(g.dep_flight, 'dep', g.dep_date, g.id)}
       <td class="td-name">${esc(g.name)}</td>
       <td style="font-size:0.78rem;">${g.spouse && g.spouse!=='-' && g.spouse!=='0' ? esc(g.spouse) : '—'}</td>
       <td style="font-size:0.78rem;">${g.dep_chaperone_id ? esc(chapName(g.dep_chaperone_id)) : '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(230,81,0,0.1);color:#c05500;border:1px dashed rgba(230,81,0,0.4);border-radius:5px;padding:2px 7px;font-size:0.7rem;font-weight:600;white-space:nowrap;">🤝 ?</span>'}</td>
@@ -4984,6 +5095,9 @@ function renderDepartures() {
       })()}</td>
       <td style="font-size:0.75rem;color:var(--slate-light);">${esc(g.dep_remarks)||'—'}</td>
     </tr>`).join('');
+
+  // Silently fill in live status as each flight's ~24h tracking window opens
+  setTimeout(() => maybeAutoRefreshFlights('dep'), 50);
 }
 
 // ═══════════════════════════════════════════
