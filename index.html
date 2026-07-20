@@ -662,6 +662,11 @@
      functional so front-desk staff can check guests in / add walk-ins. */
   body.role-checkin .nav-tab[data-view="add-guest"] { display: none !important; }
   body.role-checkin .nav-tab[data-view="backups"] { display: none !important; }
+  body.role-checkin #view-calendar .task-mutate {
+    pointer-events: none !important;
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+  }
   body.role-checkin .view:not(#view-checkin):not(#view-calendar) button,
   body.role-checkin .view:not(#view-checkin):not(#view-calendar) input,
   body.role-checkin .view:not(#view-checkin):not(#view-calendar) select,
@@ -1618,6 +1623,7 @@
         <button class="btn btn-outline btn-sm" onclick="calToday()">Today</button>
         <button class="btn btn-outline btn-sm" onclick="calNav(1)" id="calNextBtn">Next ›</button>
       </div>
+      <button class="btn btn-gold btn-sm task-mutate" onclick="addTaskItem()">+ Add Task</button>
       <div class="cal-range-label" id="calRangeLabel"></div>
       <label style="display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--slate);cursor:pointer;">
         <input type="checkbox" id="calShowFlightsChk" checked onchange="calToggleFlights(this.checked)" style="cursor:pointer;">
@@ -2028,6 +2034,38 @@
   </div>
 </div>
 
+<!-- ──────────────── TASK MODAL (Calendar-only — not part of the Events programme) ──────────────── -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <div><div class="modal-title" id="taskModalTitle">Add Task</div></div>
+      <button class="modal-close" onclick="closeModal('taskModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid form-grid-2">
+        <div class="form-group"><label>Date</label><input type="date" id="tf_date"></div>
+        <div class="form-group"><label>Time</label><input type="time" id="tf_time"></div>
+        <div class="form-group full-width"><label>Description</label><textarea id="tf_desc" rows="2" placeholder="What needs to be done"></textarea></div>
+        <div class="form-group"><label>Task Assigned To</label><input type="text" id="tf_assignee" placeholder="e.g. Lincoln, Logistics Team"></div>
+        <div class="form-group"><label>Label</label><input type="text" id="tf_labelText" placeholder="e.g. Setup, Urgent, Follow-up" value="Task"></div>
+        <div class="form-group full-width">
+          <label>Label Colour</label>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div id="tf_colorSwatches" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+            <input type="color" id="tf_labelColor" value="#3b5bdb" onchange="_taskColorPicked(this.value)" style="width:34px;height:28px;padding:0;border:1.5px solid var(--border);border-radius:6px;cursor:pointer;">
+          </div>
+        </div>
+      </div>
+      <input type="hidden" id="tf_editId">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveTaskItem()">Save Task</button>
+        <button class="btn btn-outline" id="taskDeleteBtn" onclick="deleteTaskItem()" style="display:none;color:var(--red);border-color:var(--red);">Delete Task</button>
+        <button class="btn btn-outline" onclick="closeModal('taskModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ──────────────── HOTEL MODAL ──────────────── -->
 <div class="modal-overlay" id="hotelModal">
   <div class="modal" style="max-width:540px;">
@@ -2250,7 +2288,8 @@ let db = {
   guestOrder:     [],   // custom display order — array of guest IDs
   driverOrder:    [],   // custom display order — array of driver IDs
   chaperoneOrder: [],   // custom display order — array of chaperone IDs
-  notes:          []    // [{ id, title, content, color, pinned, updatedAt }]
+  notes:          [],   // [{ id, title, content, color, pinned, updatedAt }]
+  tasks:          []    // [{ id, date, time, desc, labelText, labelColor, assignedTo }] — calendar-only, not shown elsewhere
 };
 // ── Computed getters: derive meals/activities from db.events (single source of truth) ──
 function getMealEvents() {
@@ -2326,6 +2365,7 @@ function migrateDB() {
   if (!db.driverOrder || !db.driverOrder.length)       db.driverOrder    = db.drivers.map(d => d.id);
   if (!db.chaperoneOrder || !db.chaperoneOrder.length) db.chaperoneOrder = db.chaperones.map(c => c.id);
   if (!db.notes) db.notes = [];
+  if (!db.tasks) db.tasks = [];
   if (!db.guestOrder || !db.guestOrder.length) {
     db.guestOrder = db.guests.map(g => g.id);
   }
@@ -5730,6 +5770,99 @@ function _calBuildFlightItems() {
   return items;
 }
 
+// ═══════════════════════════════════════════
+//  CALENDAR TASKS — a separate, calendar-only layer.
+//  Stored in db.tasks; never touches guests/events/meals/activities data,
+//  and never appears anywhere except the Calendar tab.
+// ═══════════════════════════════════════════
+const TASK_COLOR_PALETTE = ['#3b5bdb','#2d7a4f','#e65100','#c53030','#7c3aed','#0891b2','#be185d','#64748b'];
+
+function _calBuildTaskItems() {
+  return (db.tasks || []).map(t => ({
+    date: t.date, start: t.time || '', type: 'Task',
+    desc: t.desc || '(untitled task)',
+    location: t.assignee || '',
+    _task: t
+  }));
+}
+
+function _renderTaskColorSwatches(selected) {
+  const wrap = document.getElementById('tf_colorSwatches');
+  if (!wrap) return;
+  wrap.innerHTML = TASK_COLOR_PALETTE.map(c => `
+    <div onclick="_taskColorPicked('${c}')" title="${c}"
+      style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;
+             border:2px solid ${selected===c ? 'var(--navy)' : 'transparent'};box-sizing:border-box;"></div>
+  `).join('');
+}
+function _taskColorPicked(color) {
+  document.getElementById('tf_labelColor').value = color;
+  _renderTaskColorSwatches(color);
+}
+
+function addTaskItem() {
+  document.getElementById('taskModalTitle').textContent = 'Add Task';
+  document.getElementById('tf_date').value = '';
+  document.getElementById('tf_time').value = '';
+  document.getElementById('tf_desc').value = '';
+  document.getElementById('tf_assignee').value = '';
+  document.getElementById('tf_labelText').value = 'Task';
+  document.getElementById('tf_labelColor').value = TASK_COLOR_PALETTE[0];
+  document.getElementById('tf_editId').value = '';
+  document.getElementById('taskDeleteBtn').style.display = 'none';
+  _renderTaskColorSwatches(TASK_COLOR_PALETTE[0]);
+  // Pre-fill with the currently visible calendar date, as a convenience
+  if (_calAnchor) document.getElementById('tf_date').value = _calIsoStr(_calAnchor);
+  document.getElementById('taskModal').classList.add('open');
+}
+
+function editTaskItem(id) {
+  const t = (db.tasks||[]).find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('taskModalTitle').textContent = 'Edit Task';
+  document.getElementById('tf_date').value = t.date || '';
+  document.getElementById('tf_time').value = t.time || '';
+  document.getElementById('tf_desc').value = t.desc || '';
+  document.getElementById('tf_assignee').value = t.assignee || '';
+  document.getElementById('tf_labelText').value = t.labelText || 'Task';
+  document.getElementById('tf_labelColor').value = t.labelColor || TASK_COLOR_PALETTE[0];
+  document.getElementById('tf_editId').value = t.id;
+  document.getElementById('taskDeleteBtn').style.display = '';
+  _renderTaskColorSwatches(t.labelColor || TASK_COLOR_PALETTE[0]);
+  document.getElementById('taskModal').classList.add('open');
+}
+
+function saveTaskItem() {
+  const date = document.getElementById('tf_date').value;
+  if (!date) { alert('Please set a date for this task.'); return; }
+  const editId = document.getElementById('tf_editId').value;
+  const payload = {
+    id: editId || ('t_' + Date.now() + '_' + Math.random().toString(36).slice(2,7)),
+    date,
+    time: document.getElementById('tf_time').value,
+    desc: document.getElementById('tf_desc').value.trim(),
+    assignee: document.getElementById('tf_assignee').value.trim(),
+    labelText: document.getElementById('tf_labelText').value.trim() || 'Task',
+    labelColor: document.getElementById('tf_labelColor').value
+  };
+  if (!db.tasks) db.tasks = [];
+  const idx = db.tasks.findIndex(t => t.id === payload.id);
+  if (idx > -1) db.tasks[idx] = payload; else db.tasks.push(payload);
+  saveDB();
+  closeModal('taskModal');
+  renderCalendar();
+}
+
+async function deleteTaskItem() {
+  const id = document.getElementById('tf_editId').value;
+  if (!id) return;
+  if (!await confirmDelete('Delete Task', 'Remove this task from the calendar? This cannot be undone.')) return;
+  db.tasks = (db.tasks||[]).filter(t => t.id !== id);
+  saveDB();
+  closeModal('taskModal');
+  renderCalendar();
+}
+
 function _calIsoStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
@@ -5799,7 +5932,8 @@ function renderCalendar() {
   if (legendEl) {
     legendEl.innerHTML = Object.keys(CAL_TYPE_COLORS).map(t =>
       `<span><span class="cal-legend-dot" style="background:${CAL_TYPE_COLORS[t]};"></span>${t}</span>`
-    ).join('') + `<span><span class="cal-legend-dot" style="background:var(--slate);"></span>Other</span>`;
+    ).join('') + `<span><span class="cal-legend-dot" style="background:var(--slate);"></span>Other</span>`
+      + `<span><span class="cal-legend-dot" style="background:#3b5bdb;"></span>📌 Task (custom colour)</span>`;
   }
 
   if (_calMode === 'week') {
@@ -5838,7 +5972,9 @@ function _calRenderGrid(startDate, numDays) {
     bucket[`${di}_allday`] = [];
   });
 
-  const allItems = (db.events || []).concat(_calShowFlights ? _calBuildFlightItems() : []);
+  const allItems = (db.events || [])
+    .concat(_calShowFlights ? _calBuildFlightItems() : [])
+    .concat(_calBuildTaskItems());
 
   allItems.forEach(ev => {
     const di = dayKeys.indexOf(ev.date);
@@ -5856,6 +5992,18 @@ function _calRenderGrid(startDate, numDays) {
   });
 
   function chip(ev) {
+    if (ev.type === 'Task') {
+      const t = ev._task;
+      const color = t.labelColor || '#3b5bdb';
+      return `<div class="cal-chip task-chip task-mutate" style="border-left-color:${color};cursor:pointer;" title="Click to edit task" onclick="editTaskItem('${t.id}')">
+        <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+          ${ev.start ? `<span class="cal-chip-time">${fmtTime(ev.start)}</span>` : ''}
+          <span style="background:${color};color:white;font-size:0.6rem;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;">${esc(t.labelText||'Task')}</span>
+        </div>
+        <div class="cal-chip-title">📌 ${esc(ev.desc || '(untitled task)')}</div>
+        ${ev.location ? `<div class="cal-chip-loc">👤 ${esc(ev.location)}</div>` : ''}
+      </div>`;
+    }
     const color = CAL_TYPE_COLORS[ev.type] || 'var(--slate)';
     return `<div class="cal-chip" style="border-left-color:${color};" title="${esc(ev.type||'')}">
       <div class="cal-chip-time">${ev.start ? fmtTime(ev.start) : ''}</div>
