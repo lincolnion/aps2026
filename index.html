@@ -1830,16 +1830,10 @@
     <div class="card" style="padding:14px 20px;margin-bottom:14px;">
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
         <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--slate);">Tracking Session:</div>
-        <select id="checkinSession" onchange="renderCheckin()" style="flex:1;min-width:220px;max-width:440px;font-size:0.86rem;font-weight:600;color:var(--navy);border:2px solid var(--gold);border-radius:8px;padding:7px 12px;">
+        <select id="checkinSession" onchange="checkinSessionChanged()" style="flex:1;min-width:220px;max-width:440px;font-size:0.86rem;font-weight:600;color:var(--navy);border:2px solid var(--gold);border-radius:8px;padding:7px 12px;">
           <option value="__arrival__">✈️ Arrival / General Check-In</option>
         </select>
         <div style="font-size:0.72rem;color:var(--slate-light);" id="checkinSessionInfo"></div>
-        <!-- Manual save button -->
-        <button id="checkinSaveBtn" onclick="checkinForceSave()"
-          style="display:none;background:var(--slate);color:white;border:none;border-radius:8px;padding:8px 18px;font-size:0.82rem;font-weight:700;cursor:pointer;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2);">
-          ☁ Save Check-In
-        </button>
-        <div id="checkinSyncStatus" style="font-size:0.72rem;font-weight:600;"></div>
       </div>
     </div>
 
@@ -1855,6 +1849,10 @@
         <option value="in">✅ Arrived</option>
         <option value="walkin">🚶 Walk-ins Only</option>
       </select>
+      <button id="checkinRefreshBtn" onclick="checkinRefresh()"
+        style="background:white;color:var(--navy);border:1.5px solid var(--border);border-radius:8px;padding:8px 16px;font-size:0.84rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
+        🔄 Refresh
+      </button>
       <button id="checkinSaveBtn" onclick="checkinForceSave()"
         style="margin-left:auto;background:var(--gold);color:white;border:none;border-radius:8px;padding:8px 20px;font-size:0.84rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
         ☁ Save
@@ -2533,6 +2531,7 @@ async function _doSave() {
   if (!_firestoreDb || !window._fsSetDoc) return;
   try {
     await _writeMainDoc(_toFirestore(db));
+    _checkinUnsaved = false;
     showSyncIndicator('saved');
   } catch(e) {
     console.error('Firestore save failed:', e.code, e.message);
@@ -6758,40 +6757,6 @@ function getCheckinTime(sessionKey, personKeyOrGuestId, type, idx) {
 
 let _checkinUnsaved = false;
 
-function _setCheckinSyncStatus(state) {
-  const btn    = document.getElementById('checkinSaveBtn');
-  const status = document.getElementById('checkinSyncStatus');
-  if (state === 'saving') {
-    _checkinUnsaved = true;
-    if (btn)    { btn.style.display = 'flex'; btn.disabled = true; btn.textContent = '⏳ Saving…'; btn.style.background = '#718096'; }
-    if (status) { status.textContent = '⏳ Saving to cloud…'; status.style.color = 'var(--slate-light)'; }
-  } else if (state === 'saved') {
-    _checkinUnsaved = false;
-    if (btn)    { btn.style.display = 'none'; }
-    if (status) { status.textContent = '✓ Saved to cloud'; status.style.color = 'var(--green)';
-      setTimeout(() => { if (status) status.textContent = ''; }, 3000); }
-  } else if (state === 'error') {
-    _checkinUnsaved = true;
-    if (btn)    { btn.style.display = 'flex'; btn.disabled = false; btn.textContent = '☁ Retry Save'; btn.style.background = 'var(--red)'; }
-    if (status) { status.textContent = '⚠ Save failed — tap Retry'; status.style.color = 'var(--red)'; }
-  }
-}
-
-async function checkinForceSave() {
-  const btn    = document.getElementById('checkinSaveBtn');
-  const status = document.getElementById('checkinSyncStatus');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; btn.style.background = '#718096'; }
-  saveDB(true);
-  // _doSave is async — wait for it then show confirmation
-  await new Promise(r => setTimeout(r, 1500));
-  if (btn)    { btn.disabled = false; btn.textContent = '✓ Saved'; btn.style.background = 'var(--green)'; }
-  if (status) { status.textContent = 'Saved — safe to refresh'; status.style.color = 'var(--green)'; }
-  setTimeout(() => {
-    if (btn)    { btn.textContent = '☁ Save'; btn.style.background = 'var(--gold)'; }
-    if (status)   status.textContent = '';
-  }, 3000);
-}
-
 async function doCheckin(sessionKey, personKeyOrGuestId, type, idx) {
   if (!db.checkinLog) db.checkinLog = {};
   const k = checkinKey(sessionKey, personKeyOrGuestId, type, idx);
@@ -6800,18 +6765,21 @@ async function doCheckin(sessionKey, personKeyOrGuestId, type, idx) {
   } else {
     db.checkinLog[k] = { time: new Date().toISOString(), by: 'staff' };
   }
+  _checkinUnsaved = true;
 
   renderCheckin();
 
   if (!_firestoreDb || !window._fsSetDoc) return;
   const btn    = document.getElementById('checkinSaveBtn');
   const status = document.getElementById('checkinSyncStatus');
-  if (btn) { btn.style.display='flex'; btn.disabled=true; btn.textContent='⏳ Saving…'; btn.style.background='#718096'; }
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Saving…'; btn.style.background='#718096'; }
 
   try {
     await _writeMainDoc(_toFirestore(db));
     try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
-    if (btn)    { btn.style.display='none'; }
+    _checkinUnsaved = false;
+    if (btn)    { btn.disabled=false; btn.textContent='✓ Saved'; btn.style.background='var(--green)';
+      setTimeout(()=>{ if(btn){ btn.textContent='☁ Save'; btn.style.background='var(--gold)'; } }, 2000); }
     if (status) { status.textContent='✓ Saved'; status.style.color='var(--green)';
       setTimeout(()=>{ if(status) status.textContent=''; }, 2000); }
   } catch(e) {
@@ -6828,7 +6796,9 @@ async function checkinForceSave() {
   try {
     await _writeMainDoc(_toFirestore(db));
     try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
-    if (btn)    { btn.style.display='none'; }
+    _checkinUnsaved = false;
+    if (btn)    { btn.disabled=false; btn.textContent='✓ Saved'; btn.style.background='var(--green)';
+      setTimeout(()=>{ if(btn){ btn.textContent='☁ Save'; btn.style.background='var(--gold)'; } }, 2000); }
     if (status) { status.textContent='✓ Saved'; status.style.color='var(--green)';
       setTimeout(()=>{ if(status) status.textContent=''; }, 2000); }
   } catch(e) {
@@ -6837,22 +6807,41 @@ async function checkinForceSave() {
   }
 }
 
-function _setCheckinSyncStatus(state) {
-  const btn    = document.getElementById('checkinSaveBtn');
-  const status = document.getElementById('checkinSyncStatus');
-  if (!btn) return;
-  if (state === 'unsaved') {
-    _checkinUnsaved = true;
-    btn.style.display = 'flex';
-    btn.disabled      = false;
-    btn.textContent   = '☁ Save';
-    btn.style.background = 'var(--gold)';
-    if (status) { status.textContent = '⚠ Click Save before refreshing'; status.style.color = '#c05500'; }
-  } else if (state === 'saved') {
-    _checkinUnsaved = false;
-    btn.style.display = 'none';
-    if (status) status.textContent = '';
+// Pull the latest cloud data (e.g. check-ins done by someone else on another
+// device) and re-render — without losing the currently selected tracking
+// session or any of your own unsaved local changes.
+async function checkinRefresh() {
+  const btn = document.getElementById('checkinRefreshBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Refreshing…'; }
+  try {
+    if (_checkinUnsaved) {
+      // Save first so a refresh never silently discards local check-ins
+      await checkinForceSave();
+    }
+    if (_firestoreDb && window._fsGetDocFromServer) {
+      const snap = await window._fsGetDocFromServer(window._fsDoc(_firestoreDb,'aps2026','maindb'));
+      if (snap.exists()) {
+        db = _fromFirestore(snap.data());
+        migrateDB();
+        syncDerivedArrays();
+        try { localStorage.setItem('aps2026_db', JSON.stringify(db)); } catch(e) {}
+      }
+    }
+    renderCheckin(); // session selection is preserved — see populateCheckinSessions()
+    showToast('✓ Check-in status refreshed', '');
+  } catch(e) {
+    console.error('Check-in refresh failed:', e);
+    showToast('⚠ Refresh failed — check your connection', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh'; }
   }
+}
+
+// Remember the selected tracking session so it survives a browser refresh
+function checkinSessionChanged() {
+  const sel = document.getElementById('checkinSession');
+  if (sel) { try { localStorage.setItem('aps2026_checkin_session', sel.value); } catch(e) {} }
+  renderCheckin();
 }
 
 function resetCheckin() {
@@ -6894,11 +6883,24 @@ function populateCheckinSessions() {
     options.push(`<option value="ev_${i}">${typeIcon} ${esc(label)}${timeLabel}</option>`);
   });
   sel.innerHTML = options.join('');
-  if (cur) {
-    sel.value = cur;
-    if (!sel.value) sel.value = '__arrival__';
+
+  // Restore the last-used session on the very first population after a page
+  // load/refresh (so Refresh — or a plain browser reload — keeps the same
+  // tracking session instead of resetting to "Arrival / General Check-In").
+  // On every later call (e.g. re-render from search/filter), just keep
+  // whatever is currently selected in the live dropdown.
+  let restoreVal = cur;
+  if (!_checkinSessionRestoredOnce) {
+    _checkinSessionRestoredOnce = true;
+    try {
+      const saved = localStorage.getItem('aps2026_checkin_session');
+      if (saved) restoreVal = saved;
+    } catch(e) {}
   }
+  if (restoreVal) sel.value = restoreVal;
+  if (!sel.value) sel.value = '__arrival__';
 }
+let _checkinSessionRestoredOnce = false;
 
 // ── Helper: get registered people for a session key ─────────────────────────
 function getRegisteredForSession(sessionKey) {
@@ -7184,6 +7186,7 @@ function addWalkin() {
   // Use unified key format: "sessionKey|personKey"
   const logKey = `${sessionKey}|${personK}`;
   db.checkinLog[logKey] = { time: new Date().toISOString(), by: 'walkin' };
+  _checkinUnsaved = true;
   saveDB();
   renderCheckin();
   showToast('🚶 Walk-in added and checked in', 'success');
